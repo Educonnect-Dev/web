@@ -1,0 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@300;400;600;700&family=Sora:wght@300;400;600;700&display=swap");
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Sora", system-ui, -apple-system, sans-serif;
+  background: #0b0f1a;
+}
+
+[dir="rtl"] {
+  font-family: "Noto Kufi Arabic", "Sora", system-ui, -apple-system, sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
