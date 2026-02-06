@@ -107,6 +107,10 @@ export function AuthPage({
       } else {
         const response = await apiPost<AuthResponse>("/auth/sessions", { email, password });
         if (response.error) {
+          if (response.error.code === "EMAIL_NOT_VERIFIED") {
+            navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+            return;
+          }
           setError({ message: response.error.message, details: response.error.details });
         } else if (response.data) {
           setResult(response.data);
