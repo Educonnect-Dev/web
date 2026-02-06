@@ -60,8 +60,9 @@ type StatCardProps = {
 };
 
 function StatCard({ stat, start, reducedMotion }: StatCardProps) {
-  const value = useCountUp(stat.value, 2000, start && !reducedMotion);
-  const displayValue = start ? (reducedMotion ? stat.value : value) : 0;
+  const safeValue = stat.value ?? 0;
+  const value = useCountUp(safeValue, 2000, start && !reducedMotion);
+  const displayValue = start ? (reducedMotion ? safeValue : value) : 0;
   return (
     <div className="stat-card reveal" data-reveal>
       <div className="stat-value">

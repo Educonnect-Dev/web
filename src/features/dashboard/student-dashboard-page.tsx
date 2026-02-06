@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { API_BASE_URL, apiGet, apiPost } from "../../services/api-client";
+import { apiGet } from "../../services/api-client";
 import { StudentDashboardLayout } from "./student-dashboard-layout";
 
 type AuthUser = {

@@ -17,7 +17,7 @@ type Profile = {
   bio?: string;
   subject: string;
   level?: string;
-  isVerified?: boolean;
+  isVerified: boolean;
   teachingLevel?: "lycee" | "cem";
   currentPosition?: string;
   experienceYears?: number;
@@ -61,7 +61,14 @@ export function TeacherProfilePage() {
     });
     apiGet<PublicProfileView>(`/public-profiles/${auth.user.id}`).then((response) => {
       if (response.data) {
-        setPublicProfile(response.data as PublicProfileView);
+        const profile = response.data.profile;
+        setPublicProfile({
+          ...response.data,
+          profile: {
+            ...profile,
+            isVerified: Boolean(profile.isVerified),
+          },
+        });
       }
     });
 
