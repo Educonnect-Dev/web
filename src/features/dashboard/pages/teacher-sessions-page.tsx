@@ -174,7 +174,7 @@ export function TeacherSessionsPage() {
               <th>{t("teacherPages.durationMinutes")}</th>
               <th>{t("teacherPages.maxParticipants")}</th>
               <th>{t("teacherPages.start")}</th>
-              <th>{t("teacherPages.status")}</th>
+              <th>{t("teacherPages.statusLabel")}</th>
               <th>{t("teacherPages.attendance")}</th>
             </tr>
           </thead>

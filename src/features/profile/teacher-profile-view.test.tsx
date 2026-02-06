@@ -12,7 +12,7 @@ describe("TeacherProfileView", () => {
       subject: "math",
       level: "licence",
       isVerified: true,
-      teachingLevel: "lycee",
+      teachingLevel: "lycee" as const,
       currentPosition: "Prof",
       experienceYears: 5,
     },

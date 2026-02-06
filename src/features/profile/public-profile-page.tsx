@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import { useParams } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -111,7 +112,7 @@ export function PublicProfilePage() {
     ]);
   };
 
-  const wrapWithLayout = (node: JSX.Element) =>
+  const wrapWithLayout = (node: ReactElement) =>
     isStudent && auth ? <StudentDashboardLayout auth={auth}>{node}</StudentDashboardLayout> : node;
 
   if (!id) {

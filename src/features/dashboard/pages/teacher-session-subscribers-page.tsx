@@ -60,7 +60,7 @@ export function TeacherSessionSubscribersPage() {
           <thead>
             <tr>
               <th>{t("teacherPages.studentId")}</th>
-              <th>{t("teacherPages.status")}</th>
+              <th>{t("teacherPages.statusLabel")}</th>
             </tr>
           </thead>
           <tbody>
