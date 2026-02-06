@@ -139,6 +139,7 @@ export function LandingPage() {
   );
   useEffect(() => {
     const elements = document.querySelectorAll("[data-reveal]");
+    elements.forEach((el) => el.classList.remove("reveal--in"));
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -151,7 +152,7 @@ export function LandingPage() {
     );
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [language]);
 
   return (
     <div className="landing">

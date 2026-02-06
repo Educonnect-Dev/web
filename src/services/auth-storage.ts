@@ -1,7 +1,8 @@
 type AuthResponse = {
   user: { id: string; email: string; role: "student" | "teacher" };
-  accessToken: string;
+  accessToken?: string;
   refreshToken?: string;
+  verificationRequired?: boolean;
 };
 
 export function getStoredAuth(): AuthResponse | null {

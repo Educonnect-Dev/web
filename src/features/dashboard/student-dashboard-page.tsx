@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiGet, apiPost } from "../../services/api-client";
+import { API_BASE_URL, apiGet, apiPost } from "../../services/api-client";
 import { StudentDashboardLayout } from "./student-dashboard-layout";
 
 type AuthUser = {
@@ -44,8 +44,8 @@ type StudentDashboardSummary = {
     teacherId: string;
     title: string;
     scheduledAt: string;
-    meetingUrl: string;
-    status: "pending" | "confirmed";
+    zoomJoinUrl?: string;
+    status: "ouvert" | "complet" | "annulee" | "terminee";
   }>;
   recommendedTeachers: Array<{
     teacherId: string;
@@ -264,10 +264,8 @@ export function StudentDashboardPage() {
                     <strong>{session.title}</strong>
                     <p>{session.scheduledAt}</p>
                   </div>
-                  <span className={`status ${session.status === "confirmed" ? "live" : ""}`}>
-                    {session.status === "confirmed"
-                      ? t("studentDashboard.confirmed")
-                      : t("studentDashboard.pending")}
+                  <span className={`status ${session.status === "ouvert" ? "live" : ""}`}>
+                    {t(`studentDashboard.status.${session.status}`)}
                   </span>
                 </div>
               ))

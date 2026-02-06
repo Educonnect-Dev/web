@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { AuthPage } from "./features/auth/auth-page";
+import { EmailVerificationPage } from "./features/auth/email-verification-page";
 import { FeedPage } from "./features/feed/feed-page";
 import { TeacherDashboardLayout } from "./features/dashboard/teacher-dashboard-layout";
 import { StudentDashboardPage } from "./features/dashboard/student-dashboard-page";
@@ -20,6 +21,7 @@ import { CompleteStudentProfilePage } from "./features/profile/complete-student-
 import { PublicProfilePage } from "./features/profile/public-profile-page";
 import { TeacherSearchPage } from "./features/search/teacher-search-page";
 import { StudentCalendarPage } from "./features/sessions/student-calendar-page";
+import { StudentSessionsPage } from "./features/sessions/student-sessions-page";
 import { restoreSession } from "./services/auth-persistence";
 
 function App() {
@@ -64,10 +66,12 @@ function App() {
       <Route path="/paid-contents" element={<ComingSoonPage />} />
       <Route path="/login" element={<AuthPage initialMode="login" />} />
       <Route path="/register" element={<AuthPage initialMode="register" />} />
+      <Route path="/verify-email" element={<EmailVerificationPage />} />
       <Route path="/admin/verification" element={<ComingSoonPage />} />
       <Route path="/onboarding/teacher-profile" element={<CompleteTeacherProfilePage />} />
       <Route path="/onboarding/student-profile" element={<CompleteStudentProfilePage />} />
       <Route path="/calendar" element={<StudentCalendarPage />} />
+      <Route path="/dashboard/student/sessions" element={<StudentSessionsPage />} />
       <Route path="/messages" element={<ComingSoonPage />} />
       <Route path="/search/teachers" element={<TeacherSearchPage />} />
       <Route path="/public-profiles/:id" element={<PublicProfilePage />} />

@@ -21,21 +21,16 @@ type Session = {
   id: string;
   title: string;
   scheduledAt: string;
-  status: "pending" | "confirmed";
-};
-
-type SessionRequest = {
-  sessionId: string;
-  studentId: string;
-  status: "accepted" | "waitlist";
-  createdAt: string;
+  placesMax: number;
+  enrolledStudentIds?: string[];
+  status: "ouvert" | "complet" | "annulee" | "terminee";
 };
 
 export function StudentCalendarPage() {
   const { t } = useTranslation();
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [requests, setRequests] = useState<Record<string, SessionRequest>>({});
+  const [enrolledSessions, setEnrolledSessions] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,7 +46,7 @@ export function StudentCalendarPage() {
 
   useEffect(() => {
     if (!auth || auth.user.role !== "student") return;
-    apiGet<Session[]>("/sessions/calendar").then((response) => {
+    apiGet<Session[]>("/sessions/available").then((response) => {
       if (response.error) {
         setError(response.error.message);
         return;
@@ -60,23 +55,19 @@ export function StudentCalendarPage() {
         setSessions(response.data as Session[]);
       }
     });
-    apiGet<SessionRequest[]>("/sessions/requests/me").then((response) => {
+    apiGet<Session[]>(`/sessions/students/${auth.user.id}/sessions`).then((response) => {
       if (response.data) {
-        const map: Record<string, SessionRequest> = {};
-        (response.data as SessionRequest[]).forEach((item) => {
-          map[item.sessionId] = item;
-        });
-        setRequests(map);
+        setEnrolledSessions(new Set((response.data as Session[]).map((session) => session.id)));
       }
     });
   }, [auth]);
 
-  const handleRequest = async (sessionId: string) => {
-    if (!auth) return;
-    const response = await apiPost<SessionRequest>(
-      `/sessions/${sessionId}/requests`,
-      {},
-    );
+  const acceptedCount = (session: Session) => session.enrolledStudentIds?.length ?? 0;
+  const isSessionFull = (session: Session) =>
+    session.status === "complet" || acceptedCount(session) >= session.placesMax;
+
+  const handleEnroll = async (sessionId: string) => {
+    const response = await apiPost<Session>(`/sessions/${sessionId}/enroll`, {});
     if (response.error) {
       setError(
         response.error.code === "SESSION_FULL"
@@ -86,18 +77,23 @@ export function StudentCalendarPage() {
       return;
     }
     if (response.data) {
-      setRequests((prev) => ({ ...prev, [sessionId]: response.data as SessionRequest }));
+      setSessions((prev) => prev.map((item) => (item.id === sessionId ? (response.data as Session) : item)));
+      setEnrolledSessions((prev) => {
+        const next = new Set(prev);
+        next.add(sessionId);
+        return next;
+      });
     }
   };
 
   const handleJoin = async (sessionId: string) => {
-    const response = await apiGet<{ meetingUrl: string }>(`/sessions/${sessionId}/join`);
+    const response = await apiGet<{ zoomJoinUrl: string }>(`/sessions/${sessionId}/join`);
     if (response.error) {
       setError(response.error.message);
       return;
     }
-    if (response.data?.meetingUrl) {
-      window.open(response.data.meetingUrl, "_blank", "noopener,noreferrer");
+    if (response.data?.zoomJoinUrl) {
+      window.open(response.data.zoomJoinUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -137,26 +133,26 @@ export function StudentCalendarPage() {
                     <td>{session.title}</td>
                     <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
                     <td>
-                      {requests[session.id]?.status === "accepted" ? (
+                      {enrolledSessions.has(session.id) ? (
                         <button className="secondary-button" type="button" onClick={() => handleJoin(session.id)}>
                           {t("studentPages.open")}
                         </button>
+                      ) : isSessionFull(session) ? (
+                        <span className="status">{t("studentPages.sessionFull")}</span>
                       ) : (
                         <button
                           className="secondary-button"
                           type="button"
-                          onClick={() => handleRequest(session.id)}
+                          onClick={() => handleEnroll(session.id)}
                         >
-                          {t("studentPages.request")}
+                          {t("studentPages.enroll")}
                         </button>
                       )}
                     </td>
                     <td>
-                      {requests[session.id]?.status === "accepted"
+                      {enrolledSessions.has(session.id)
                         ? t("studentPages.statusAccepted")
-                        : requests[session.id]?.status === "waitlist"
-                          ? t("studentPages.statusWaitlist")
-                          : t("studentPages.statusNotEnrolled")}
+                        : t("studentPages.statusNotEnrolled")}
                     </td>
                   </tr>
                 ))
@@ -174,11 +170,9 @@ export function StudentCalendarPage() {
                   <div className="mobile-card__header">
                     <strong>{session.title}</strong>
                     <span className="status">
-                      {requests[session.id]?.status === "accepted"
+                      {enrolledSessions.has(session.id)
                         ? t("studentPages.statusAccepted")
-                        : requests[session.id]?.status === "waitlist"
-                          ? t("studentPages.statusWaitlist")
-                          : t("studentPages.statusNotEnrolled")}
+                        : t("studentPages.statusNotEnrolled")}
                     </span>
                   </div>
                   <div className="mobile-card__row">
@@ -186,17 +180,19 @@ export function StudentCalendarPage() {
                     <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
                   </div>
                   <div className="mobile-card__actions">
-                    {requests[session.id]?.status === "accepted" ? (
+                    {enrolledSessions.has(session.id) ? (
                       <button className="secondary-button" type="button" onClick={() => handleJoin(session.id)}>
                         {t("studentPages.open")}
                       </button>
+                    ) : isSessionFull(session) ? (
+                      <span className="status">{t("studentPages.sessionFull")}</span>
                     ) : (
                       <button
                         className="secondary-button"
                         type="button"
-                        onClick={() => handleRequest(session.id)}
+                        onClick={() => handleEnroll(session.id)}
                       >
-                        {t("studentPages.request")}
+                        {t("studentPages.enroll")}
                       </button>
                     )}
                   </div>

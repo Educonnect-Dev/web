@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiGet, apiPost } from "../../../services/api-client";
+import { API_BASE_URL, apiGet, apiPost } from "../../../services/api-client";
 import { useLanguage } from "../../../shared/hooks/use-language";
 
 type AuthContext = {

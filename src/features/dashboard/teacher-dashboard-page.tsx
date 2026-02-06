@@ -23,7 +23,12 @@ export function TeacherDashboardPage() {
     contentsCount: number;
     subscribersCount: number;
     revenueMonth: number;
-    upcomingSessions: Array<{ id: string; title: string; scheduledAt: string; status: "pending" | "confirmed" }>;
+    upcomingSessions: Array<{
+      id: string;
+      title: string;
+      scheduledAt: string;
+      status: "ouvert" | "complet" | "annulee" | "terminee";
+    }>;
   } | null>(null);
 
   useEffect(() => {
@@ -129,10 +134,8 @@ export function TeacherDashboardPage() {
                       <strong>{session.title}</strong>
                       <p>{session.scheduledAt}</p>
                     </div>
-                    <span className={`status ${session.status === "confirmed" ? "live" : ""}`}>
-                      {session.status === "confirmed"
-                        ? t("teacherDashboard.confirmed")
-                        : t("teacherDashboard.pending")}
+                    <span className={`status ${session.status === "ouvert" ? "live" : ""}`}>
+                      {t(`teacherDashboard.status.${session.status}`)}
                     </span>
                   </div>
                 ))

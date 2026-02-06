@@ -40,6 +40,12 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
           <NavLink to="/calendar" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
             {t("navigation.student.calendar")}
           </NavLink>
+          <NavLink
+            to="/dashboard/student/sessions"
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          >
+            {t("navigation.student.sessions")}
+          </NavLink>
           <div className="nav-item disabled">
             <span className="nav-item__label">{t("navigation.student.messages")}</span>
             <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
@@ -79,6 +85,12 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
         </NavLink>
         <NavLink to="/calendar" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.student.calendar")}
+        </NavLink>
+        <NavLink
+          to="/dashboard/student/sessions"
+          className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}
+        >
+          {t("navigation.student.sessions")}
         </NavLink>
         <div className="mobile-nav__item disabled">{t("navigation.student.messages")}</div>
       </nav>

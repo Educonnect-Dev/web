@@ -910,6 +910,27 @@
   transform: scale(0.95);
 }
 
+.btn-secondary {
+  background: rgba(24, 64, 127, 0.18);
+  color: #d8e2f5;
+  border: 1px solid rgba(24, 64, 127, 0.5);
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  transform: scale(1.03);
+}
+
+.btn-link {
+  background: transparent;
+  color: #8fb7ff;
+  padding: 12px 0;
+}
+
+.btn-link:hover {
+  transform: translateY(-1px);
+}
+
 .btn-ghost {
   background: rgba(24, 64, 127, 0.2);
   color: #d8e2f5;
@@ -1941,6 +1962,14 @@
   color: #9fe2c2;
   padding: 12px;
   border-radius: 12px;
+}
+
+.auth-actions {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .app-boot {

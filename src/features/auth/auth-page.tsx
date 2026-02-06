@@ -12,8 +12,9 @@ type Role = "student" | "teacher";
 
 export type AuthResponse = {
   user: { id: string; email: string; role: Role };
-  accessToken: string;
+  accessToken?: string;
   refreshToken?: string;
+  verificationRequired?: boolean;
 };
 
 type PreferencesResponse = {
@@ -91,14 +92,12 @@ export function AuthPage({
 
     try {
       if (mode === "register") {
-        const response = await apiPost<AuthResponse>("/users", {
-          email,
-          password,
-          role,
-        });
+        const response = await apiPost<AuthResponse>("/users", { email, password, role });
         if (response.error) {
           setError({ message: response.error.message, details: response.error.details });
-        } else if (response.data) {
+        } else if (response.data?.verificationRequired) {
+          navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        } else if (response.data?.accessToken) {
           setResult(response.data);
           onAuthenticated?.(response.data);
           window.localStorage.setItem("educonnect_auth", JSON.stringify(response.data));
@@ -244,6 +243,7 @@ export function AuthPage({
 }
 
 function buildAuthHeaders(auth: AuthResponse): Record<string, string> {
+  if (!auth.accessToken) return {};
   return { Authorization: `Bearer ${auth.accessToken}` };
 }
 

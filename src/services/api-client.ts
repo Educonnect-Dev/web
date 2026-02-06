@@ -13,7 +13,7 @@ export type ApiResponse<T> = {
 
 const AUTH_STORAGE_KEY = "educonnect_auth";
 
-const baseUrl = (import.meta as { env: Record<string, string | undefined> }).env
+export const API_BASE_URL = (import.meta as { env: Record<string, string | undefined> }).env
   .VITE_API_BASE_URL ?? "http://localhost:3000";
 
 export async function apiPost<T>(
@@ -36,7 +36,7 @@ async function apiRequest<T>(
   options?: { skipRefresh?: boolean },
 ): Promise<ApiResponse<T>> {
   const authHeaders = getAuthHeaders();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: { "Content-Type": "application/json", ...authHeaders, ...(headers ?? {}) },
     credentials: "include",
@@ -71,7 +71,7 @@ function getAuthHeaders(): Record<string, string> {
 
 async function refreshAccessToken(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const response = await fetch(`${baseUrl}/auth/refresh`, {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
