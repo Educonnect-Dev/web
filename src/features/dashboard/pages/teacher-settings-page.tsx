@@ -16,11 +16,6 @@ type Settings = {
   available: boolean;
 };
 
-type ZoomStatus = {
-  connected: boolean;
-  expiresAt?: string;
-};
-
 export function TeacherSettingsPage() {
   const { auth } = useOutletContext<AuthContext>();
   const { language, setLanguage } = useLanguage();
@@ -28,7 +23,6 @@ export function TeacherSettingsPage() {
   const isRtl = language === "ar";
   const [settings, setSettings] = useState<Settings | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [zoomStatus, setZoomStatus] = useState<ZoomStatus | null>(null);
 
   useEffect(() => {
     apiGet<Settings>("/teacher-settings").then((response) => {
@@ -41,11 +35,6 @@ export function TeacherSettingsPage() {
           available: Boolean(data.available),
         });
         setLanguage((data.language ?? "fr") as "fr" | "ar");
-      }
-    });
-    apiGet<ZoomStatus>("/zoom/oauth/status").then((response) => {
-      if (response.data) {
-        setZoomStatus(response.data as ZoomStatus);
       }
     });
   }, [auth.user.id, auth.user.role]);
@@ -66,18 +55,6 @@ export function TeacherSettingsPage() {
       return;
     }
     setStatus(t("teacherSettings.saved"));
-  };
-
-  const handleConnectZoom = async () => {
-    const response = await apiGet<{ url: string }>("/zoom/oauth/authorize-url");
-    if (response.data?.url) {
-      window.location.href = response.data.url;
-    }
-  };
-
-  const handleDisconnectZoom = async () => {
-    await apiPost("/zoom/oauth/disconnect", {});
-    setZoomStatus({ connected: false });
   };
 
   return (
@@ -137,21 +114,6 @@ export function TeacherSettingsPage() {
           </div>
         ) : (
           <p>{t("teacherSettings.loading")}</p>
-        )}
-      </div>
-      <div className="dashboard-card">
-        <h2>{t("teacherSettings.zoomTitle")}</h2>
-        {zoomStatus?.connected ? (
-          <>
-            <p>{t("teacherSettings.zoomConnected")}</p>
-            <button className="btn btn-ghost" type="button" onClick={handleDisconnectZoom}>
-              {t("teacherSettings.zoomDisconnect")}
-            </button>
-          </>
-        ) : (
-          <button className="btn btn-primary" type="button" onClick={handleConnectZoom}>
-            {t("teacherSettings.zoomConnect")}
-          </button>
         )}
       </div>
     </section>

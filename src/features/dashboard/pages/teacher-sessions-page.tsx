@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -26,6 +26,12 @@ type AttendanceEntry = {
   leaveTime?: string;
 };
 
+type Participant = {
+  id: string;
+  nom?: string;
+  email?: string;
+};
+
 export function TeacherSessionsPage() {
   const { auth } = useOutletContext<AuthContext>();
   const { t } = useTranslation();
@@ -38,6 +44,12 @@ export function TeacherSessionsPage() {
   const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
   const [attendance, setAttendance] = useState<AttendanceEntry[] | null>(null);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
+  const [participantsBySession, setParticipantsBySession] = useState<Record<string, Participant[]>>({});
+  const [participantsLoading, setParticipantsLoading] = useState<Record<string, boolean>>({});
+  const [participantsError, setParticipantsError] = useState<Record<string, string>>({});
+  const [emailSubjectBySession, setEmailSubjectBySession] = useState<Record<string, string>>({});
+  const [emailMessageBySession, setEmailMessageBySession] = useState<Record<string, string>>({});
+  const [emailStatusBySession, setEmailStatusBySession] = useState<Record<string, string>>({});
 
   useEffect(() => {
     refreshSessions();
@@ -104,6 +116,43 @@ export function TeacherSessionsPage() {
     if (response.data) {
       setAttendance(response.data as AttendanceEntry[]);
     }
+  };
+
+  const loadParticipants = async (sessionId: string) => {
+    if (participantsBySession[sessionId] || participantsLoading[sessionId]) return;
+    setParticipantsLoading((prev) => ({ ...prev, [sessionId]: true }));
+    setParticipantsError((prev) => ({ ...prev, [sessionId]: "" }));
+    const response = await apiGet<Participant[]>(`/sessions/${sessionId}/participants`);
+    if (response.error) {
+      setParticipantsError((prev) => ({ ...prev, [sessionId]: response.error!.message }));
+      setParticipantsLoading((prev) => ({ ...prev, [sessionId]: false }));
+      return;
+    }
+    setParticipantsBySession((prev) => ({ ...prev, [sessionId]: response.data as Participant[] }));
+    setParticipantsLoading((prev) => ({ ...prev, [sessionId]: false }));
+  };
+
+  const handleSendEmail = async (sessionId: string) => {
+    const subject = emailSubjectBySession[sessionId]?.trim() ?? "";
+    const message = emailMessageBySession[sessionId]?.trim() ?? "";
+    if (!subject || !message) {
+      setEmailStatusBySession((prev) => ({ ...prev, [sessionId]: t("teacherPages.emailMissing") }));
+      return;
+    }
+    setEmailStatusBySession((prev) => ({ ...prev, [sessionId]: "" }));
+    const response = await apiPost<{ sent: number; skipped: number }>(
+      `/sessions/${sessionId}/participants/email`,
+      { subject, message },
+    );
+    if (response.error) {
+      setEmailStatusBySession((prev) => ({ ...prev, [sessionId]: response.error!.message }));
+      return;
+    }
+    const result = response.data as { sent: number; skipped: number };
+    setEmailStatusBySession((prev) => ({
+      ...prev,
+      [sessionId]: t("teacherPages.emailSent", { sent: result.sent, skipped: result.skipped }),
+    }));
   };
 
   return (
@@ -176,12 +225,14 @@ export function TeacherSessionsPage() {
               <th>{t("teacherPages.start")}</th>
               <th>{t("teacherPages.statusLabel")}</th>
               <th>{t("teacherPages.attendance")}</th>
+              <th>{t("teacherPages.participants")}</th>
             </tr>
           </thead>
           <tbody>
             {sessions.length ? (
               sessions.map((session) => (
-                <tr key={session.id}>
+                <Fragment key={session.id}>
+                <tr>
                   {(() => {
                     const timing = getTiming(session);
                     const canStart = session.zoomStartUrl && (timing.isLive || timing.isSoon);
@@ -210,14 +261,89 @@ export function TeacherSessionsPage() {
                       "-"
                     )}
                   </td>
+                  <td>
+                    <button
+                      className="btn btn-ghost"
+                      type="button"
+                      onClick={() => loadParticipants(session.id)}
+                    >
+                      {t("teacherPages.viewParticipants")}
+                    </button>
+                  </td>
                       </>
                     );
                   })()}
                 </tr>
+                <tr>
+                  <td colSpan={8}>
+                    <details onToggle={(event) => {
+                      if ((event.target as HTMLDetailsElement).open) {
+                        loadParticipants(session.id);
+                      }
+                    }}>
+                      <summary>{t("teacherPages.participants")}</summary>
+                      {participantsError[session.id] ? (
+                        <div className="form-error">{participantsError[session.id]}</div>
+                      ) : participantsLoading[session.id] ? (
+                        <div className="empty-state">{t("teacherPages.loadingParticipants")}</div>
+                      ) : (
+                        <>
+                          <div className="dashboard-list">
+                            {(participantsBySession[session.id] ?? []).length ? (
+                              (participantsBySession[session.id] ?? []).map((participant) => (
+                                <div key={participant.id} className="dashboard-row">
+                                  <div>
+                                    <strong>{participant.nom ?? participant.id}</strong>
+                                    <p>{participant.email ?? "-"}</p>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="empty-state">{t("teacherPages.noParticipants")}</div>
+                            )}
+                          </div>
+                          <div className="content-form">
+                            <label>
+                              {t("teacherPages.emailSubject")}
+                              <input
+                                value={emailSubjectBySession[session.id] ?? ""}
+                                onChange={(event) =>
+                                  setEmailSubjectBySession((prev) => ({
+                                    ...prev,
+                                    [session.id]: event.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <label>
+                              {t("teacherPages.emailMessage")}
+                              <textarea
+                                value={emailMessageBySession[session.id] ?? ""}
+                                onChange={(event) =>
+                                  setEmailMessageBySession((prev) => ({
+                                    ...prev,
+                                    [session.id]: event.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <button className="btn btn-primary" type="button" onClick={() => handleSendEmail(session.id)}>
+                              {t("teacherPages.emailSend")}
+                            </button>
+                            {emailStatusBySession[session.id] ? (
+                              <div className="form-success">{emailStatusBySession[session.id]}</div>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
+                    </details>
+                  </td>
+                </tr>
+                </Fragment>
               ))
             ) : (
               <tr>
-                <td colSpan={7}>{t("teacherPages.noSessions")}</td>
+                <td colSpan={8}>{t("teacherPages.noSessions")}</td>
               </tr>
             )}
           </tbody>
@@ -261,6 +387,70 @@ export function TeacherSessionsPage() {
                     </button>
                   ) : null}
                 </div>
+                <details
+                  className="mobile-card__details"
+                  onToggle={(event) => {
+                    if ((event.target as HTMLDetailsElement).open) {
+                      loadParticipants(session.id);
+                    }
+                  }}
+                >
+                  <summary>{t("teacherPages.participants")}</summary>
+                  {participantsError[session.id] ? (
+                    <div className="form-error">{participantsError[session.id]}</div>
+                  ) : participantsLoading[session.id] ? (
+                    <div className="empty-state">{t("teacherPages.loadingParticipants")}</div>
+                  ) : (
+                    <>
+                      <div className="dashboard-list">
+                        {(participantsBySession[session.id] ?? []).length ? (
+                          (participantsBySession[session.id] ?? []).map((participant) => (
+                            <div key={participant.id} className="dashboard-row">
+                              <div>
+                                <strong>{participant.nom ?? participant.id}</strong>
+                                <p>{participant.email ?? "-"}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="empty-state">{t("teacherPages.noParticipants")}</div>
+                        )}
+                      </div>
+                      <div className="content-form">
+                        <label>
+                          {t("teacherPages.emailSubject")}
+                          <input
+                            value={emailSubjectBySession[session.id] ?? ""}
+                            onChange={(event) =>
+                              setEmailSubjectBySession((prev) => ({
+                                ...prev,
+                                [session.id]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          {t("teacherPages.emailMessage")}
+                          <textarea
+                            value={emailMessageBySession[session.id] ?? ""}
+                            onChange={(event) =>
+                              setEmailMessageBySession((prev) => ({
+                                ...prev,
+                                [session.id]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <button className="btn btn-primary" type="button" onClick={() => handleSendEmail(session.id)}>
+                          {t("teacherPages.emailSend")}
+                        </button>
+                        {emailStatusBySession[session.id] ? (
+                          <div className="form-success">{emailStatusBySession[session.id]}</div>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
+                </details>
                     </>
                   );
                 })()}
@@ -306,7 +496,22 @@ export function TeacherSessionsPage() {
 }
 
 function toLocalIsoWithOffset(value: string) {
-  const date = new Date(value);
+  const [datePart, timePart] = value.split("T");
+  if (!datePart || !timePart) {
+    return value;
+  }
+  const [inputYear, inputMonth, inputDay] = datePart.split("-").map((part) => Number(part));
+  const [inputHour, inputMinute] = timePart.split(":").map((part) => Number(part));
+  if (
+    !inputYear ||
+    !inputMonth ||
+    !inputDay ||
+    Number.isNaN(inputHour) ||
+    Number.isNaN(inputMinute)
+  ) {
+    return value;
+  }
+  const date = new Date(inputYear, inputMonth - 1, inputDay, inputHour, inputMinute, 0);
   const pad = (n: number) => String(n).padStart(2, "0");
   const yyyy = date.getFullYear();
   const mm = pad(date.getMonth() + 1);

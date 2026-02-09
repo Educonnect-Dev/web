@@ -1,8 +1,12 @@
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { StudentCalendarPage } from "./student-calendar-page";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 
 describe("StudentCalendarPage", () => {
   it("renders access reserved when unauthenticated", () => {
@@ -11,6 +15,7 @@ describe("StudentCalendarPage", () => {
         <StudentCalendarPage />
       </MemoryRouter>,
     );
-    expect(html).toContain("Calendrier");
+    expect(html).toContain("studentPages.loginTitleCalendar");
+    expect(html).toContain("auth.loginAsStudent");
   });
 });

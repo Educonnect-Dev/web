@@ -72,11 +72,6 @@ type StudentDashboardSummary = {
   }>;
 };
 
-type ZoomStatus = {
-  connected: boolean;
-  expiresAt?: string;
-};
-
 const STORAGE_KEY = "educonnect_auth";
 
 export function StudentDashboardPage() {
@@ -86,7 +81,6 @@ export function StudentDashboardPage() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [zoomStatus, setZoomStatus] = useState<ZoomStatus | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -107,11 +101,6 @@ export function StudentDashboardPage() {
         setItems(response.data.feed.items);
         const meta = response.data.feed as FeedMeta;
         setNextPage(meta.nextPage ?? null);
-      }
-    });
-    apiGet<ZoomStatus>("/zoom/oauth/status").then((response) => {
-      if (response.data) {
-        setZoomStatus(response.data);
       }
     });
   }, [auth]);
@@ -170,28 +159,6 @@ export function StudentDashboardPage() {
           <button className="btn btn-primary">{t("studentDashboard.loadMore")}</button>
         </div>
       </header>
-
-      <section className="dashboard-section">
-        <div className="dashboard-card">
-          <h2>{t("studentDashboard.zoomTitle")}</h2>
-          {zoomStatus?.connected ? (
-            <p>{t("studentDashboard.zoomConnected")}</p>
-          ) : (
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={async () => {
-                const response = await apiGet<{ url: string }>("/zoom/oauth/authorize-url");
-                if (response.data?.url) {
-                  window.location.href = response.data.url;
-                }
-              }}
-            >
-              {t("studentDashboard.zoomConnect")}
-            </button>
-          )}
-        </div>
-      </section>
 
       <section className="dashboard-grid">
         <div className="dashboard-card highlight">

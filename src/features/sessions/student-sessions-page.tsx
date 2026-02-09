@@ -18,7 +18,8 @@ type AuthState = {
 };
 
 type Session = {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   scheduledAt: string;
   durationMinutes: number;
@@ -97,7 +98,9 @@ export function StudentSessionsPage() {
       setError(response.error.message);
       return;
     }
-    setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+    setSessions((prev) =>
+      prev.filter((session) => (session.id ?? session._id ?? "") !== sessionId),
+    );
   };
 
   if (!auth || auth.user.role !== "student") {
@@ -125,9 +128,10 @@ export function StudentSessionsPage() {
           {upcoming.length ? (
             <div className="dashboard-list">
               {upcoming.map((session) => {
+                const sessionId = session.id ?? session._id ?? "";
                 const timing = getTiming(session);
                 return (
-                  <div key={session.id} className="dashboard-row">
+                  <div key={sessionId} className="dashboard-row">
                     <div>
                       <strong>{session.title}</strong>
                       <p>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</p>
@@ -138,12 +142,16 @@ export function StudentSessionsPage() {
                       ) : (
                         <span className="status">{t(`studentDashboard.status.${session.status}`)}</span>
                       )}
-                      {timing.canJoin ? (
-                        <button className="btn btn-primary" type="button" onClick={() => handleJoin(session.id)}>
+                      {session.zoomJoinUrl ? (
+                        <button className="btn btn-primary" type="button" onClick={() => handleJoin(sessionId)}>
+                          {t("studentPages.open")}
+                        </button>
+                      ) : timing.canJoin ? (
+                        <button className="btn btn-primary" type="button" onClick={() => handleJoin(sessionId)}>
                           {t("studentPages.join")}
                         </button>
                       ) : (
-                        <button className="btn btn-ghost" type="button" onClick={() => handleUnenroll(session.id)}>
+                        <button className="btn btn-ghost" type="button" onClick={() => handleUnenroll(sessionId)}>
                           {t("studentPages.unenroll")}
                         </button>
                       )}
@@ -161,15 +169,18 @@ export function StudentSessionsPage() {
           <h2>{t("studentPages.pastSessions")}</h2>
           {past.length ? (
             <div className="dashboard-list">
-              {past.map((session) => (
-                <div key={session.id} className="dashboard-row">
+              {past.map((session) => {
+                const sessionId = session.id ?? session._id ?? "";
+                return (
+                <div key={sessionId} className="dashboard-row">
                   <div>
                     <strong>{session.title}</strong>
                     <p>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</p>
                   </div>
                   <span className="status">{t("studentPages.completed")}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state">{t("studentPages.noPastSessions")}</div>

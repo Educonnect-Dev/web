@@ -18,7 +18,8 @@ type AuthState = {
 };
 
 type Session = {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   scheduledAt: string;
   placesMax: number;
@@ -128,13 +129,15 @@ export function StudentCalendarPage() {
             </thead>
             <tbody>
               {sessions.length ? (
-                sessions.map((session) => (
-                  <tr key={session.id}>
+                sessions.map((session) => {
+                  const sessionId = session.id ?? session._id ?? "";
+                  return (
+                  <tr key={sessionId}>
                     <td>{session.title}</td>
                     <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
                     <td>
-                      {enrolledSessions.has(session.id) ? (
-                        <button className="secondary-button" type="button" onClick={() => handleJoin(session.id)}>
+                      {enrolledSessions.has(sessionId) ? (
+                        <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
                           {t("studentPages.open")}
                         </button>
                       ) : isSessionFull(session) ? (
@@ -143,19 +146,20 @@ export function StudentCalendarPage() {
                         <button
                           className="secondary-button"
                           type="button"
-                          onClick={() => handleEnroll(session.id)}
+                          onClick={() => handleEnroll(sessionId)}
                         >
                           {t("studentPages.enroll")}
                         </button>
                       )}
                     </td>
                     <td>
-                      {enrolledSessions.has(session.id)
+                      {enrolledSessions.has(sessionId)
                         ? t("studentPages.statusAccepted")
                         : t("studentPages.statusNotEnrolled")}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={4}>{t("studentPages.noSessions")}</td>
@@ -165,12 +169,14 @@ export function StudentCalendarPage() {
           </table>
           <div className="mobile-cards mobile-cards--spaced">
             {sessions.length ? (
-              sessions.map((session) => (
-                <article key={session.id} className="mobile-card">
+              sessions.map((session) => {
+                const sessionId = session.id ?? session._id ?? "";
+                return (
+                <article key={sessionId} className="mobile-card">
                   <div className="mobile-card__header">
                     <strong>{session.title}</strong>
                     <span className="status">
-                      {enrolledSessions.has(session.id)
+                      {enrolledSessions.has(sessionId)
                         ? t("studentPages.statusAccepted")
                         : t("studentPages.statusNotEnrolled")}
                     </span>
@@ -180,8 +186,8 @@ export function StudentCalendarPage() {
                     <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
                   </div>
                   <div className="mobile-card__actions">
-                    {enrolledSessions.has(session.id) ? (
-                      <button className="secondary-button" type="button" onClick={() => handleJoin(session.id)}>
+                    {enrolledSessions.has(sessionId) ? (
+                      <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
                         {t("studentPages.open")}
                       </button>
                     ) : isSessionFull(session) ? (
@@ -190,14 +196,15 @@ export function StudentCalendarPage() {
                       <button
                         className="secondary-button"
                         type="button"
-                        onClick={() => handleEnroll(session.id)}
+                        onClick={() => handleEnroll(sessionId)}
                       >
                         {t("studentPages.enroll")}
                       </button>
                     )}
                   </div>
                 </article>
-              ))
+                );
+              })
             ) : (
               <div className="mobile-card mobile-card--empty">{t("studentPages.noSessions")}</div>
             )}
