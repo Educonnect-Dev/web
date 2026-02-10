@@ -1,5 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -18,7 +19,7 @@ vi.mock("../../services/api-client", () => ({
 }));
 
 vi.mock("../dashboard/student-dashboard-layout", () => ({
-  StudentDashboardLayout: ({ children }: { children: unknown }) => <div>{children}</div>,
+  StudentDashboardLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 describe("FeedPage", () => {

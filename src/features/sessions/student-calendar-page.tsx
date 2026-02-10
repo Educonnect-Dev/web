@@ -58,7 +58,10 @@ export function StudentCalendarPage() {
     });
     apiGet<Session[]>(`/sessions/students/${auth.user.id}/sessions`).then((response) => {
       if (response.data) {
-        setEnrolledSessions(new Set((response.data as Session[]).map((session) => session.id)));
+        const ids = (response.data as Session[])
+          .map((session) => session.id ?? session._id)
+          .filter((id): id is string => Boolean(id));
+        setEnrolledSessions(new Set(ids));
       }
     });
   }, [auth]);
