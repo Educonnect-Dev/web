@@ -110,8 +110,9 @@ export function FeedPage() {
             {items.length ? (
               items.map((item) => (
                 <article key={item.id} className="content-card feed-card">
-                  {item.fileUrl ? (
-                    <div className="content-preview">
+                  <div className="feed-card__media">
+                    {item.fileUrl ? (
+                      <div className="content-preview">
                       {item.type === "pdf" ? (
                         <iframe
                           title={item.title}
@@ -121,15 +122,35 @@ export function FeedPage() {
                       ) : (
                         <video src={item.fileUrl} controls preload="metadata" />
                       )}
-                    </div>
-                  ) : null}
+                      </div>
+                    ) : (
+                      <div className={`content-preview content-preview--static content-preview--${item.type}`}>
+                        <div className="content-preview__badge">{item.type.toUpperCase()}</div>
+                        <div className="content-preview__icon">{item.type === "pdf" ? "PDF" : "▶"}</div>
+                        <div className="content-preview__title">{item.title}</div>
+                      </div>
+                    )}
+                  </div>
                   <div className="feed-card__body">
-                    <div className="content-tag">{item.type.toUpperCase()}</div>
-                    <h3>{item.title}</h3>
-                    {item.teacherName ? <p className="content-author">{item.teacherName}</p> : null}
-                    <p>{item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}</p>
-                    <small>{new Date(item.createdAt).toLocaleDateString("fr-FR")}</small>
-                    <div className="content-actions">
+                    <div className="feed-card__eyebrow">{item.type.toUpperCase()}</div>
+                    <h3 className="feed-card__title">{item.title}</h3>
+                    <a className="content-author content-author--link" href={`/public-profiles/${item.teacherId}`}>
+                      <span className="content-author__avatar">
+                        {(item.teacherName ?? "P").slice(0, 1).toUpperCase()}
+                      </span>
+                      <strong className="content-author__name">
+                        {item.teacherName ?? "Professeur"}
+                      </strong>
+                    </a>
+                    <div className="feed-card__meta">
+                      <span className="feed-card__price">
+                        {item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}
+                      </span>
+                      <span className="feed-card__date">
+                        {new Date(item.createdAt).toLocaleDateString("fr-FR")}
+                      </span>
+                    </div>
+                    <div className="feed-card__actions">
                       {item.type === "pdf" && item.fileUrl ? (
                         <a
                           className="btn btn-ghost"

@@ -47,7 +47,7 @@ export function StudentCalendarPage() {
 
   useEffect(() => {
     if (!auth || auth.user.role !== "student") return;
-    apiGet<Session[]>("/sessions/available").then((response) => {
+    apiGet<Session[]>("/sessions/calendar").then((response) => {
       if (response.error) {
         setError(response.error.message);
         return;
@@ -66,6 +66,25 @@ export function StudentCalendarPage() {
   const acceptedCount = (session: Session) => session.enrolledStudentIds?.length ?? 0;
   const isSessionFull = (session: Session) =>
     session.status === "complet" || acceptedCount(session) >= session.placesMax;
+  const getSessionId = (session: Session) => session.id ?? session._id ?? "";
+  const isSameDay = (left: Date, right: Date) =>
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate();
+
+  const now = new Date();
+  const { todaySessions, upcomingSessions } = sessions.reduce(
+    (acc, session) => {
+      const start = new Date(session.scheduledAt);
+      if (isSameDay(start, now)) {
+        acc.todaySessions.push(session);
+      } else if (start.getTime() > now.getTime()) {
+        acc.upcomingSessions.push(session);
+      }
+      return acc;
+    },
+    { todaySessions: [] as Session[], upcomingSessions: [] as Session[] },
+  );
 
   const handleEnroll = async (sessionId: string) => {
     const response = await apiPost<Session>(`/sessions/${sessionId}/enroll`, {});
@@ -118,6 +137,7 @@ export function StudentCalendarPage() {
         <h1>{t("studentPages.calendarTitle")}</h1>
         <div className="dashboard-card">
           {error ? <div className="form-error">{error}</div> : null}
+          <h2>{t("studentPages.todaySessions")}</h2>
           <table className="dashboard-table dashboard-table--mobile-hide">
             <thead>
               <tr>
@@ -128,14 +148,64 @@ export function StudentCalendarPage() {
               </tr>
             </thead>
             <tbody>
-              {sessions.length ? (
-                sessions.map((session) => {
-                  const sessionId = session.id ?? session._id ?? "";
+              {todaySessions.length ? (
+                todaySessions.map((session) => {
+                  const sessionId = getSessionId(session);
                   return (
-                  <tr key={sessionId}>
-                    <td>{session.title}</td>
-                    <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
-                    <td>
+                    <tr key={sessionId}>
+                      <td>{session.title}</td>
+                      <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
+                      <td>
+                        {enrolledSessions.has(sessionId) ? (
+                          <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
+                            {t("studentPages.open")}
+                          </button>
+                        ) : isSessionFull(session) ? (
+                          <span className="status">{t("studentPages.sessionFull")}</span>
+                        ) : (
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => handleEnroll(sessionId)}
+                          >
+                            {t("studentPages.enroll")}
+                          </button>
+                        )}
+                      </td>
+                      <td>
+                        {enrolledSessions.has(sessionId)
+                          ? t("studentPages.statusAccepted")
+                          : t("studentPages.statusNotEnrolled")}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4}>{t("studentPages.noTodaySessions")}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="mobile-cards mobile-cards--spaced">
+            {todaySessions.length ? (
+              todaySessions.map((session) => {
+                const sessionId = getSessionId(session);
+                return (
+                  <article key={sessionId} className="mobile-card">
+                    <div className="mobile-card__header">
+                      <strong>{session.title}</strong>
+                      <span className="status">
+                        {enrolledSessions.has(sessionId)
+                          ? t("studentPages.statusAccepted")
+                          : t("studentPages.statusNotEnrolled")}
+                      </span>
+                    </div>
+                    <div className="mobile-card__row">
+                      <span className="mobile-card__label">{t("studentPages.tableDate")}</span>
+                      <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
+                    </div>
+                    <div className="mobile-card__actions">
                       {enrolledSessions.has(sessionId) ? (
                         <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
                           {t("studentPages.open")}
@@ -151,62 +221,107 @@ export function StudentCalendarPage() {
                           {t("studentPages.enroll")}
                         </button>
                       )}
-                    </td>
-                    <td>
-                      {enrolledSessions.has(sessionId)
-                        ? t("studentPages.statusAccepted")
-                        : t("studentPages.statusNotEnrolled")}
-                    </td>
-                  </tr>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="mobile-card mobile-card--empty">{t("studentPages.noTodaySessions")}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="dashboard-card">
+          <h2>{t("studentPages.upcomingSessions")}</h2>
+          <table className="dashboard-table dashboard-table--mobile-hide">
+            <thead>
+              <tr>
+                <th>{t("studentPages.tableSession")}</th>
+                <th>{t("studentPages.tableDate")}</th>
+                <th>{t("studentPages.tableAccess")}</th>
+                <th>{t("studentPages.tableStatus")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcomingSessions.length ? (
+                upcomingSessions.map((session) => {
+                  const sessionId = getSessionId(session);
+                  return (
+                    <tr key={sessionId}>
+                      <td>{session.title}</td>
+                      <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
+                      <td>
+                        {enrolledSessions.has(sessionId) ? (
+                          <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
+                            {t("studentPages.open")}
+                          </button>
+                        ) : isSessionFull(session) ? (
+                          <span className="status">{t("studentPages.sessionFull")}</span>
+                        ) : (
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => handleEnroll(sessionId)}
+                          >
+                            {t("studentPages.enroll")}
+                          </button>
+                        )}
+                      </td>
+                      <td>
+                        {enrolledSessions.has(sessionId)
+                          ? t("studentPages.statusAccepted")
+                          : t("studentPages.statusNotEnrolled")}
+                      </td>
+                    </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={4}>{t("studentPages.noSessions")}</td>
+                  <td colSpan={4}>{t("studentPages.noUpcomingSessions")}</td>
                 </tr>
               )}
             </tbody>
           </table>
           <div className="mobile-cards mobile-cards--spaced">
-            {sessions.length ? (
-              sessions.map((session) => {
-                const sessionId = session.id ?? session._id ?? "";
+            {upcomingSessions.length ? (
+              upcomingSessions.map((session) => {
+                const sessionId = getSessionId(session);
                 return (
-                <article key={sessionId} className="mobile-card">
-                  <div className="mobile-card__header">
-                    <strong>{session.title}</strong>
-                    <span className="status">
-                      {enrolledSessions.has(sessionId)
-                        ? t("studentPages.statusAccepted")
-                        : t("studentPages.statusNotEnrolled")}
-                    </span>
-                  </div>
-                  <div className="mobile-card__row">
-                    <span className="mobile-card__label">{t("studentPages.tableDate")}</span>
-                    <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
-                  </div>
-                  <div className="mobile-card__actions">
-                    {enrolledSessions.has(sessionId) ? (
-                      <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
-                        {t("studentPages.open")}
-                      </button>
-                    ) : isSessionFull(session) ? (
-                      <span className="status">{t("studentPages.sessionFull")}</span>
-                    ) : (
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => handleEnroll(sessionId)}
-                      >
-                        {t("studentPages.enroll")}
-                      </button>
-                    )}
-                  </div>
-                </article>
+                  <article key={sessionId} className="mobile-card">
+                    <div className="mobile-card__header">
+                      <strong>{session.title}</strong>
+                      <span className="status">
+                        {enrolledSessions.has(sessionId)
+                          ? t("studentPages.statusAccepted")
+                          : t("studentPages.statusNotEnrolled")}
+                      </span>
+                    </div>
+                    <div className="mobile-card__row">
+                      <span className="mobile-card__label">{t("studentPages.tableDate")}</span>
+                      <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
+                    </div>
+                    <div className="mobile-card__actions">
+                      {enrolledSessions.has(sessionId) ? (
+                        <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
+                          {t("studentPages.open")}
+                        </button>
+                      ) : isSessionFull(session) ? (
+                        <span className="status">{t("studentPages.sessionFull")}</span>
+                      ) : (
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => handleEnroll(sessionId)}
+                        >
+                          {t("studentPages.enroll")}
+                        </button>
+                      )}
+                    </div>
+                  </article>
                 );
               })
             ) : (
-              <div className="mobile-card mobile-card--empty">{t("studentPages.noSessions")}</div>
+              <div className="mobile-card mobile-card--empty">{t("studentPages.noUpcomingSessions")}</div>
             )}
           </div>
         </div>
