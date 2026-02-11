@@ -235,7 +235,7 @@ export function TeacherSessionsPage() {
                 <tr>
                   {(() => {
                     const timing = getTiming(session);
-                    const canStart = session.zoomStartUrl && (timing.isLive || timing.isSoon);
+                    const canStart = Boolean(session.zoomStartUrl);
                     return (
                       <>
                   <td>{session.title}</td>
@@ -354,7 +354,7 @@ export function TeacherSessionsPage() {
               <article key={session.id} className="mobile-card">
                 {(() => {
                   const timing = getTiming(session);
-                  const canStart = session.zoomStartUrl && (timing.isLive || timing.isSoon);
+                    const canStart = Boolean(session.zoomStartUrl);
                   return (
                     <>
                 <div className="mobile-card__header">
