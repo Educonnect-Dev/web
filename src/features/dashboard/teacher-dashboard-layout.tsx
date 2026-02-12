@@ -109,9 +109,6 @@ export function TeacherDashboardLayout() {
         <NavLink to="/dashboard/teacher/sessions" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.teacher.sessions")}
         </NavLink>
-        <NavLink to="/dashboard/teacher/contents" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
-          {t("navigation.teacher.contents")}
-        </NavLink>
         <button
           className={`mobile-nav__item${isMobileMenuOpen ? " active" : ""}`}
           type="button"
@@ -134,6 +131,9 @@ export function TeacherDashboardLayout() {
               <span>{t("navigation.teacher.messages")}</span>
               <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
             </div>
+            <NavLink to="/dashboard/teacher/contents" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
+              {t("navigation.teacher.contents")}
+            </NavLink>
             <NavLink to="/dashboard/teacher/subscribers" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
               {t("navigation.teacher.subscribers")}
             </NavLink>

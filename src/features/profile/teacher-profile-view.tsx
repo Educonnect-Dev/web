@@ -182,9 +182,11 @@ export function TeacherProfileView({
                   <h4>{offer.title}</h4>
                   <p>{offer.description}</p>
                 </div>
-                <span className="profile-price">
-                  {offer.price} {offer.currency}
-                </span>
+                {mode === "preview" ? (
+                  <span className="profile-price">
+                    {offer.price} {offer.currency}
+                  </span>
+                ) : null}
               </article>
             ))
           ) : (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet } from "../../../services/api-client";
@@ -29,6 +29,7 @@ type Thread = {
 export function TeacherDashboardOverview() {
   const { auth } = useOutletContext<AuthContext>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [alerts, setAlerts] = useState<Thread[]>([]);
 
@@ -56,8 +57,12 @@ export function TeacherDashboardOverview() {
           <p>{t("teacherDashboard.welcome", { email: auth.user.email })}</p>
         </div>
         <div className="dashboard-actions">
-          <button className="btn btn-ghost">{t("teacherDashboard.scheduleSession")}</button>
-          <button className="btn btn-primary">{t("teacherDashboard.publishContent")}</button>
+          <button className="btn btn-ghost" type="button" onClick={() => navigate("/dashboard/teacher/sessions")}>
+            {t("teacherDashboard.scheduleSession")}
+          </button>
+          <button className="btn btn-primary" type="button" onClick={() => navigate("/dashboard/teacher/contents")}>
+            {t("teacherDashboard.publishContent")}
+          </button>
         </div>
       </header>
 
@@ -110,9 +115,15 @@ export function TeacherDashboardOverview() {
         <section className="dashboard-section">
           <h2>{t("teacherDashboard.quickActions")}</h2>
           <div className="quick-actions">
-            <button className="btn btn-primary">{t("teacherDashboard.createPdf")}</button>
-            <button className="btn btn-ghost">{t("teacherDashboard.updateProfile")}</button>
-            <button className="btn btn-ghost">{t("teacherDashboard.viewStats")}</button>
+            <button className="btn btn-primary" type="button" onClick={() => navigate("/dashboard/teacher/contents")}>
+              {t("teacherDashboard.createPdf")}
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={() => navigate("/dashboard/teacher/profile")}>
+              {t("teacherDashboard.updateProfile")}
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={() => navigate("/dashboard/teacher/revenue")}>
+              {t("teacherDashboard.viewStats")}
+            </button>
           </div>
           <div className="dashboard-card compact">
             <h3>{t("teacherDashboard.todayTodo")}</h3>

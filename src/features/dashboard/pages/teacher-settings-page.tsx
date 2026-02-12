@@ -14,6 +14,8 @@ type Settings = {
   profileVisible: boolean;
   language: "fr" | "ar";
   available: boolean;
+  subscriptionPrice: number;
+  subscriptionCurrency: "DZD";
 };
 
 export function TeacherSettingsPage() {
@@ -33,6 +35,8 @@ export function TeacherSettingsPage() {
           profileVisible: Boolean(data.profileVisible),
           language: (data.language ?? "fr") as "fr" | "ar",
           available: Boolean(data.available),
+          subscriptionPrice: Number(data.subscriptionPrice ?? 1500),
+          subscriptionCurrency: (data.subscriptionCurrency ?? "DZD") as "DZD",
         });
         setLanguage((data.language ?? "fr") as "fr" | "ar");
       }
@@ -48,6 +52,8 @@ export function TeacherSettingsPage() {
         profileVisible: settings.profileVisible,
         language: settings.language,
         available: settings.available,
+        subscriptionPrice: settings.subscriptionPrice,
+        subscriptionCurrency: settings.subscriptionCurrency,
       },
     );
     if (response.error) {
@@ -105,6 +111,34 @@ export function TeacherSettingsPage() {
               >
                 <option value="fr">Français</option>
                 <option value="ar">Arabe</option>
+              </select>
+            </label>
+            <label>
+              <span>{t("teacherSettings.subscriptionPrice")}</span>
+              <input
+                type="number"
+                min={0}
+                value={settings.subscriptionPrice}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    subscriptionPrice: Number(event.target.value ?? 0),
+                  })
+                }
+              />
+            </label>
+            <label>
+              <span>{t("teacherSettings.subscriptionCurrency")}</span>
+              <select
+                value={settings.subscriptionCurrency}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    subscriptionCurrency: event.target.value as "DZD",
+                  })
+                }
+              >
+                <option value="DZD">DZD</option>
               </select>
             </label>
             <button className="btn btn-primary" type="button" onClick={handleSave}>
