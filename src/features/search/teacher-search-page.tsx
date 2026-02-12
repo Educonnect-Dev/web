@@ -43,7 +43,17 @@ export function TeacherSearchPage() {
   const { language } = useLanguage();
   const { t } = useTranslation();
   const isRtl = language === "ar";
-  const [auth, setAuth] = useState<AuthState | null>(null);
+  const [auth, setAuth] = useState<AuthState | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as AuthState;
+    } catch {
+      return null;
+    }
+  });
+  const [authChecked, setAuthChecked] = useState(false);
   const [subject, setSubject] = useState("");
   const [teachingLevel, setTeachingLevel] = useState("");
   const [results, setResults] = useState<PublicProfile[]>([]);
@@ -55,11 +65,17 @@ export function TeacherSearchPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      setAuth(null);
+      setAuthChecked(true);
+      return;
+    }
     try {
       setAuth(JSON.parse(raw) as AuthState);
     } catch {
       setAuth(null);
+    } finally {
+      setAuthChecked(true);
     }
   }, []);
 
@@ -102,6 +118,17 @@ export function TeacherSearchPage() {
     ]);
     setStatusByTeacher((prev) => ({ ...prev, [teacherId]: "success" }));
   };
+
+  if (!authChecked) {
+    return (
+      <div className="app-boot">
+        <div className="app-boot__card">
+          <div className="app-boot__spinner" />
+          <p>Connexion en cours...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!auth || auth.user.role !== "student") {
     return (
