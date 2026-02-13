@@ -110,7 +110,8 @@ export function TeacherProfilePage() {
         data?: { path: string; signedUrl: string };
         error?: { message?: string };
       };
-      if (!response.ok || json.error || !json.data?.path) {
+      const data = json.data;
+      if (!response.ok || json.error || !data?.path || !data.signedUrl) {
         throw new Error(json.error?.message ?? "Upload impossible.");
       }
       const updateResponse = await apiPost<Profile>(
@@ -124,19 +125,19 @@ export function TeacherProfilePage() {
           teachingLevel: privateProfile.teachingLevel ?? "lycee",
           currentPosition: privateProfile.currentPosition,
           experienceYears: privateProfile.experienceYears,
-          avatarPath: json.data.path,
+          avatarPath: data.path,
         },
       );
       if (updateResponse.error) {
         throw new Error(updateResponse.error.message ?? "Enregistrement impossible.");
       }
-      setAvatarPath(json.data.path);
-      setAvatarUrl(json.data.signedUrl);
+      setAvatarPath(data.path);
+      setAvatarUrl(data.signedUrl);
       setAvatarStatus("success");
-      setPrivateProfile((prev) => (prev ? { ...prev, avatarUrl: json.data.signedUrl, avatarPath: json.data.path } : prev));
+      setPrivateProfile((prev) => (prev ? { ...prev, avatarUrl: data.signedUrl, avatarPath: data.path } : prev));
       setPublicProfile((prev) =>
         prev
-          ? { ...prev, profile: { ...prev.profile, avatarUrl: json.data.signedUrl } }
+          ? { ...prev, profile: { ...prev.profile, avatarUrl: data.signedUrl } }
           : prev,
       );
     } catch (err) {
