@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiGet } from "../../../services/api-client";
+import { apiGet, apiPost, API_BASE_URL } from "../../../services/api-client";
 import { TeacherProfileView } from "../../profile/teacher-profile-view";
 
 type AuthContext = {
-  auth: { user: { id: string; role: "student" | "teacher"; email: string } };
+  auth: { user: { id: string; role: "student" | "teacher"; email: string }; accessToken: string };
 };
 
 type Profile = {
@@ -21,6 +21,8 @@ type Profile = {
   teachingLevel?: "lycee" | "cem";
   currentPosition?: string;
   experienceYears?: number;
+  avatarUrl?: string;
+  avatarPath?: string | null;
 };
 
 type PublicProfileView = {
@@ -52,11 +54,18 @@ export function TeacherProfilePage() {
   const [privateProfile, setPrivateProfile] = useState<Profile | null>(null);
   const [publicProfile, setPublicProfile] = useState<PublicProfileView | null>(null);
   const [subscriberCount, setSubscriberCount] = useState(0);
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   useEffect(() => {
     apiGet<Profile>("/profiles/me").then((response) => {
       if (response.data) {
-        setPrivateProfile(response.data as Profile);
+        const profile = response.data as Profile;
+        setPrivateProfile(profile);
+        setAvatarUrl(profile.avatarUrl ?? null);
+        setAvatarPath(profile.avatarPath ?? null);
       }
     });
     apiGet<PublicProfileView>(`/public-profiles/${auth.user.id}`).then((response) => {
@@ -81,6 +90,102 @@ export function TeacherProfilePage() {
     });
   }, [auth.user.id]);
 
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !auth.accessToken || !privateProfile) return;
+    setAvatarStatus("uploading");
+    setAvatarError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`${API_BASE_URL}/uploads/avatar`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        credentials: "include",
+        body: form,
+      });
+      const json = (await response.json()) as {
+        data?: { path: string; signedUrl: string };
+        error?: { message?: string };
+      };
+      if (!response.ok || json.error || !json.data?.path) {
+        throw new Error(json.error?.message ?? "Upload impossible.");
+      }
+      const updateResponse = await apiPost<Profile>(
+        "/profiles",
+        {
+          firstName: privateProfile.firstName ?? "",
+          lastName: privateProfile.lastName ?? "",
+          bio: privateProfile.bio,
+          subject: privateProfile.subject,
+          level: privateProfile.level,
+          teachingLevel: privateProfile.teachingLevel ?? "lycee",
+          currentPosition: privateProfile.currentPosition,
+          experienceYears: privateProfile.experienceYears,
+          avatarPath: json.data.path,
+        },
+      );
+      if (updateResponse.error) {
+        throw new Error(updateResponse.error.message ?? "Enregistrement impossible.");
+      }
+      setAvatarPath(json.data.path);
+      setAvatarUrl(json.data.signedUrl);
+      setAvatarStatus("success");
+      setPrivateProfile((prev) => (prev ? { ...prev, avatarUrl: json.data.signedUrl, avatarPath: json.data.path } : prev));
+      setPublicProfile((prev) =>
+        prev
+          ? { ...prev, profile: { ...prev.profile, avatarUrl: json.data.signedUrl } }
+          : prev,
+      );
+    } catch (err) {
+      setAvatarStatus("error");
+      setAvatarError(err instanceof Error ? err.message : "Upload impossible.");
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!avatarPath || !privateProfile) return;
+    setAvatarStatus("uploading");
+    setAvatarError(null);
+    try {
+      const deleteResponse = await apiPost<{ ok: boolean }>("/uploads/avatar/delete", { path: avatarPath });
+      if (deleteResponse.error) {
+        throw new Error(deleteResponse.error.message ?? "Suppression impossible.");
+      }
+      const updateResponse = await apiPost<Profile>(
+        "/profiles",
+        {
+          firstName: privateProfile.firstName ?? "",
+          lastName: privateProfile.lastName ?? "",
+          bio: privateProfile.bio,
+          subject: privateProfile.subject,
+          level: privateProfile.level,
+          teachingLevel: privateProfile.teachingLevel ?? "lycee",
+          currentPosition: privateProfile.currentPosition,
+          experienceYears: privateProfile.experienceYears,
+          avatarPath: null,
+        },
+      );
+      if (updateResponse.error) {
+        throw new Error(updateResponse.error.message ?? "Enregistrement impossible.");
+      }
+      setAvatarPath(null);
+      setAvatarUrl(null);
+      setAvatarStatus("success");
+      setPrivateProfile((prev) => (prev ? { ...prev, avatarUrl: undefined, avatarPath: null } : prev));
+      setPublicProfile((prev) =>
+        prev
+          ? { ...prev, profile: { ...prev.profile, avatarUrl: undefined } }
+          : prev,
+      );
+    } catch (err) {
+      setAvatarStatus("error");
+      setAvatarError(err instanceof Error ? err.message : "Suppression impossible.");
+    }
+  };
+
   return (
     <section className="dashboard-section">
       <div className="dashboard-header">
@@ -96,6 +201,24 @@ export function TeacherProfilePage() {
       <div className="dashboard-columns">
         <div className="dashboard-card">
           <h3>{t("teacherPages.privateProfileTitle")}</h3>
+          <div className="avatar-uploader" style={{ marginBottom: 16 }}>
+            <div className="avatar-preview">
+              {avatarUrl ? <img src={avatarUrl} alt="Photo de profil" /> : <span>?</span>}
+            </div>
+            <input
+              id="avatar"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarChange}
+            />
+            {avatarUrl ? (
+              <button className="btn btn-ghost" type="button" onClick={handleAvatarRemove}>
+                Retirer la photo
+              </button>
+            ) : null}
+            {avatarStatus === "uploading" ? <div className="auth-helper">Upload en cours…</div> : null}
+            {avatarStatus === "error" && avatarError ? <div className="auth-error">{avatarError}</div> : null}
+          </div>
           {privateProfile ? (
             <div className="profile-block">
               {privateProfile.firstName || privateProfile.lastName ? (

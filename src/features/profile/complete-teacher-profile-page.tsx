@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { apiGet, apiPost } from "../../services/api-client";
+import { apiGet, apiPost, API_BASE_URL } from "../../services/api-client";
 import { gradeOptions, subjectOptions, teachingLevelOptions } from "./profile-options";
 
 type AuthUser = {
@@ -27,6 +27,10 @@ export function CompleteTeacherProfilePage() {
   const [teachingLevel, setTeachingLevel] = useState<"lycee" | "cem">("lycee");
   const [currentPosition, setCurrentPosition] = useState("");
   const [experienceYears, setExperienceYears] = useState<number | "">("");
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -54,6 +58,8 @@ export function CompleteTeacherProfilePage() {
           teachingLevel?: "lycee" | "cem";
           currentPosition?: string;
           experienceYears?: number;
+          avatarUrl?: string;
+          avatarPath?: string | null;
         };
         setFirstName(data.firstName ?? "");
         setLastName(data.lastName ?? "");
@@ -65,6 +71,8 @@ export function CompleteTeacherProfilePage() {
         setExperienceYears(
           typeof data.experienceYears === "number" ? data.experienceYears : "",
         );
+        setAvatarUrl(data.avatarUrl ?? null);
+        setAvatarPath(data.avatarPath ?? null);
       }
     });
   }, [auth]);
@@ -97,6 +105,7 @@ export function CompleteTeacherProfilePage() {
         teachingLevel,
         currentPosition: currentPosition || undefined,
         experienceYears: experienceYears === "" ? undefined : Number(experienceYears),
+        avatarPath: avatarPath === null ? null : avatarPath ?? undefined,
       },
     );
     if (response.error) {
@@ -106,11 +115,90 @@ export function CompleteTeacherProfilePage() {
     navigate("/dashboard/teacher");
   };
 
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !auth?.accessToken) return;
+    setAvatarStatus("uploading");
+    setAvatarError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`${API_BASE_URL}/uploads/avatar`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        credentials: "include",
+        body: form,
+      });
+      const json = (await response.json()) as {
+        data?: { path: string; signedUrl: string };
+        error?: { message?: string };
+      };
+      if (!response.ok || json.error || !json.data?.path) {
+        throw new Error(json.error?.message ?? "Upload impossible.");
+      }
+      setAvatarPath(json.data.path);
+      setAvatarUrl(json.data.signedUrl);
+      setAvatarStatus("success");
+    } catch (err) {
+      setAvatarStatus("error");
+      setAvatarError(err instanceof Error ? err.message : "Upload impossible.");
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!auth?.accessToken || !avatarPath) return;
+    setAvatarStatus("uploading");
+    setAvatarError(null);
+    try {
+      await apiPost("/uploads/avatar/delete", { path: avatarPath });
+      const response = await apiPost(
+        "/profiles",
+        {
+          firstName,
+          lastName,
+          bio: bio || undefined,
+          subject,
+          level: level || undefined,
+          teachingLevel,
+          currentPosition: currentPosition || undefined,
+          experienceYears: experienceYears === "" ? undefined : Number(experienceYears),
+          avatarPath: null,
+        },
+      );
+      if (response.error) {
+        throw new Error(response.error.message ?? "Suppression impossible.");
+      }
+      setAvatarPath(null);
+      setAvatarUrl(null);
+      setAvatarStatus("success");
+    } catch (err) {
+      setAvatarStatus("error");
+      setAvatarError(err instanceof Error ? err.message : "Suppression impossible.");
+    }
+  };
+
   return (
     <div className="auth-shell">
       <div className="auth-card">
         <h1 className="auth-title">Complète ton profil prof</h1>
         <form className="auth-form" onSubmit={handleSubmit}>
+          <label htmlFor="avatar">Photo de profil (jpg, png, webp)</label>
+          <div className="avatar-uploader">
+            <div className="avatar-preview">
+              {avatarUrl ? <img src={avatarUrl} alt="Photo de profil" /> : <span>?</span>}
+            </div>
+            <input id="avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} />
+            {avatarUrl ? (
+              <button className="btn btn-ghost" type="button" onClick={handleAvatarRemove}>
+                Retirer la photo
+              </button>
+            ) : null}
+            {avatarStatus === "uploading" ? <div className="auth-helper">Upload en cours…</div> : null}
+            {avatarStatus === "error" && avatarError ? <div className="auth-error">{avatarError}</div> : null}
+          </div>
+
           <label htmlFor="firstName">Prénom</label>
           <input
             id="firstName"

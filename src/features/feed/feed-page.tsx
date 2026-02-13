@@ -8,6 +8,7 @@ type FeedItem = {
   id: string;
   teacherId: string;
   teacherName?: string;
+  teacherAvatarUrl?: string;
   title: string;
   type: "video" | "pdf";
   price: number;
@@ -136,7 +137,11 @@ export function FeedPage() {
                     <h3 className="feed-card__title">{item.title}</h3>
                     <a className="content-author content-author--link" href={`/public-profiles/${item.teacherId}`}>
                       <span className="content-author__avatar">
-                        {(item.teacherName ?? "P").slice(0, 1).toUpperCase()}
+                        {item.teacherAvatarUrl ? (
+                          <img src={item.teacherAvatarUrl} alt="" loading="lazy" />
+                        ) : (
+                          (item.teacherName ?? "P").slice(0, 1).toUpperCase()
+                        )}
                       </span>
                       <strong className="content-author__name">
                         {item.teacherName ?? "Professeur"}

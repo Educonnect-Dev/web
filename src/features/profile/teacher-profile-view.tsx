@@ -17,6 +17,7 @@ type PublicProfile = {
     teachingLevel?: "lycee" | "cem";
     currentPosition?: string;
     experienceYears?: number;
+    avatarUrl?: string;
   };
   contents: Array<{
     id: string;
@@ -95,6 +96,7 @@ export function TeacherProfileView({
   const isRtl = language === "ar";
   const profileName = [data.profile.firstName, data.profile.lastName].filter(Boolean).join(" ");
   const heroInitial = profileName?.charAt(0).toUpperCase() ?? data.profile.subject?.charAt(0).toUpperCase() ?? "P";
+  const avatarAlt = profileName || data.profile.subject || "Prof";
   const [preview, setPreview] = useState<{
     type: "pdf" | "video";
     url: string;
@@ -105,7 +107,13 @@ export function TeacherProfileView({
     <div className="profile-view" dir={isRtl ? "rtl" : "ltr"}>
       <section className="profile-card profile-card--hero">
         <div className="profile-hero">
-          <div className="profile-avatar">{heroInitial}</div>
+          <div className="profile-avatar">
+            {data.profile.avatarUrl ? (
+              <img src={data.profile.avatarUrl} alt={avatarAlt} loading="lazy" />
+            ) : (
+              heroInitial
+            )}
+          </div>
           <div className="profile-hero__text">
             <h2 className="profile-title">{profileName || data.profile.subject}</h2>
             <p className="profile-status">

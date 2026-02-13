@@ -21,6 +21,7 @@ type PublicProfile = {
     teachingLevel?: "lycee" | "cem";
     currentPosition?: string;
     experienceYears?: number;
+    avatarUrl?: string;
   };
   contents: Array<{
     id: string;

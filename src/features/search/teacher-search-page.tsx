@@ -17,6 +17,7 @@ type PublicProfile = {
   teachingLevel: "lycee" | "cem";
   currentPosition?: string;
   experienceYears?: number;
+  avatarUrl?: string;
 };
 
 type Subscription = {
@@ -226,13 +227,24 @@ export function TeacherSearchPage() {
               return (
                 <article key={profile.id} className="teacher-card">
                   <div className="teacher-card__header">
-                    <div>
-                      <p className="teacher-card__subject">
-                        {[profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.subject}
-                      </p>
-                      <p className="teacher-card__level">
-                        {subjectLabel} • {profile.teachingLevel === "lycee" ? "Lycée" : "CEM"}
-                      </p>
+                    <div className="teacher-card__identity">
+                      <span className="teacher-card__avatar" aria-hidden="true">
+                        {profile.avatarUrl ? (
+                          <img src={profile.avatarUrl} alt="" loading="lazy" />
+                        ) : (
+                          ([profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.subject)
+                            .slice(0, 1)
+                            .toUpperCase()
+                        )}
+                      </span>
+                      <div>
+                        <p className="teacher-card__subject">
+                          {[profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.subject}
+                        </p>
+                        <p className="teacher-card__level">
+                          {subjectLabel} • {profile.teachingLevel === "lycee" ? "Lycée" : "CEM"}
+                        </p>
+                      </div>
                     </div>
                     {isTeacherSubscribed ? (
                       <span className="teacher-card__badge">{t("search.subscribedTag")}</span>
