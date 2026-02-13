@@ -506,8 +506,8 @@ iframe {
 }
 
 .profile-avatar {
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   border-radius: 18px;
   background: linear-gradient(135deg, var(--blue-700), var(--orange-500));
   color: #fff;
@@ -515,7 +515,7 @@ iframe {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 24px;
   overflow: hidden;
 }
 
@@ -750,6 +750,12 @@ iframe {
 }
 
 @media (max-width: 720px) {
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+  }
+
   .search-page,
   .profile-public {
     padding: 28px 16px 90px;
