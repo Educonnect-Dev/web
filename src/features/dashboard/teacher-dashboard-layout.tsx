@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -19,6 +19,7 @@ const STORAGE_KEY = "educonnect_auth";
 export function TeacherDashboardLayout() {
   const [auth, setAuth] = useState<AuthState | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -68,6 +69,14 @@ export function TeacherDashboardLayout() {
 
   const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
 
+  const handleNotificationsClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (location.pathname !== "/dashboard/teacher") return;
+    const target = document.getElementById("notifications");
+    if (!target) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
@@ -77,6 +86,7 @@ export function TeacherDashboardLayout() {
             className="dashboard-bell"
             to="/dashboard/teacher#notifications"
             aria-label={t("navigation.teacher.notifications")}
+            onClick={handleNotificationsClick}
           >
             <span aria-hidden="true">🔔</span>
             {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
@@ -143,7 +153,11 @@ export function TeacherDashboardLayout() {
         <NavLink to="/dashboard/teacher/sessions" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.teacher.sessions")}
         </NavLink>
-        <Link className="mobile-nav__item mobile-nav__item--bell" to="/dashboard/teacher#notifications">
+        <Link
+          className="mobile-nav__item mobile-nav__item--bell"
+          to="/dashboard/teacher#notifications"
+          onClick={handleNotificationsClick}
+        >
           <span aria-hidden="true">🔔</span>
           {unreadNotifications ? <span className="mobile-nav__badge">{unreadLabel}</span> : null}
         </Link>
