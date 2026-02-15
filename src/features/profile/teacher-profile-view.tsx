@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { useLanguage } from "../../shared/hooks/use-language";
+import { formatTeacherDisplayName } from "../../utils/teacher-display";
 
 type Language = "fr" | "ar";
 
@@ -52,6 +53,7 @@ const translations: Record<Language, Record<string, string>> = {
     teachingLevelLabel: "Niveau enseigné",
     positionLabel: "Poste",
     experienceLabel: "Ancienneté",
+    teacherLabel: "Professeur",
   },
   ar: {
     verified: "ملف موثّق",
@@ -73,6 +75,7 @@ const translations: Record<Language, Record<string, string>> = {
     teachingLevelLabel: "المستوى التعليمي",
     positionLabel: "المنصب",
     experienceLabel: "الخبرة",
+    teacherLabel: "الأستاذ",
   },
 };
 
@@ -95,6 +98,9 @@ export function TeacherProfileView({
   const copy = useMemo(() => translations[language], [language]);
   const isRtl = language === "ar";
   const profileName = [data.profile.firstName, data.profile.lastName].filter(Boolean).join(" ");
+  const profileDisplayName = profileName
+    ? formatTeacherDisplayName(profileName, copy.teacherLabel)
+    : data.profile.subject;
   const heroInitial = profileName?.charAt(0).toUpperCase() ?? data.profile.subject?.charAt(0).toUpperCase() ?? "P";
   const avatarAlt = profileName || data.profile.subject || "Prof";
   const [preview, setPreview] = useState<{
@@ -115,7 +121,7 @@ export function TeacherProfileView({
             )}
           </div>
           <div className="profile-hero__text">
-            <h2 className="profile-title">{profileName || data.profile.subject}</h2>
+            <h2 className="profile-title">{profileDisplayName}</h2>
             <p className="profile-status">
               {data.profile.isVerified ? copy.verified : copy.notVerified}
             </p>

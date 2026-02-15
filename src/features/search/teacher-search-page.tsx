@@ -6,6 +6,7 @@ import { useLanguage } from "../../shared/hooks/use-language";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
 import { subjectOptions, teachingLevelOptions } from "../profile/profile-options";
 import { useTranslation } from "react-i18next";
+import { formatTeacherDisplayName } from "../../utils/teacher-display";
 
 type PublicProfile = {
   id: string;
@@ -225,6 +226,10 @@ export function TeacherSearchPage() {
               const subjectLabel =
                 subjectOptions.find((option) => option.value === profile.subject)?.label ??
                 profile.subject;
+              const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+              const teacherName = fullName
+                ? formatTeacherDisplayName(fullName, t("common.teacherLabel"))
+                : profile.subject;
               return (
                 <article key={profile.id} className="teacher-card">
                   <div className="teacher-card__header">
@@ -240,7 +245,7 @@ export function TeacherSearchPage() {
                       </span>
                       <div>
                         <p className="teacher-card__subject">
-                          {[profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.subject}
+                          {teacherName}
                         </p>
                         <p className="teacher-card__level">
                           {subjectLabel} • {profile.teachingLevel === "lycee" ? "Lycée" : "CEM"}

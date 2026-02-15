@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { apiGet } from "../../services/api-client";
+import { formatTeacherDisplayName } from "../../utils/teacher-display";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
 
 type FeedItem = {
@@ -145,7 +146,9 @@ export function FeedPage() {
                         )}
                       </span>
                       <strong className="content-author__name">
-                        {item.teacherName ?? "Professeur"}
+                        {item.teacherName
+                          ? formatTeacherDisplayName(item.teacherName, t("common.teacherLabel"))
+                          : t("common.teacherLabel")}
                       </strong>
                     </Link>
                     <div className="feed-card__meta">

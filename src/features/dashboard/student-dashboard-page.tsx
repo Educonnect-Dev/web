@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { apiGet } from "../../services/api-client";
+import { formatTeacherDisplayName } from "../../utils/teacher-display";
 import { StudentDashboardLayout } from "./student-dashboard-layout";
 
 type AuthUser = {
@@ -193,7 +194,11 @@ export function StudentDashboardPage() {
                   <article key={item.id} className="content-card">
                     <div className="content-tag">{item.type.toUpperCase()}</div>
                     <h3>{item.title}</h3>
-                    {item.teacherName ? <p className="content-author">{item.teacherName}</p> : null}
+                    {item.teacherName ? (
+                      <p className="content-author">
+                        {formatTeacherDisplayName(item.teacherName, t("common.teacherLabel"))}
+                      </p>
+                    ) : null}
                     <p>{item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}</p>
                     <small>{new Date(item.createdAt).toLocaleDateString("fr-FR")}</small>
                     <div className="content-actions">

@@ -18,6 +18,7 @@ const resources = {
         comingSoon: "À venir",
         comingSoonTitle: "Cette page arrive bientôt",
         comingSoonBody: "Nous finalisons cette fonctionnalité. Elle sera disponible très bientôt.",
+        teacherLabel: "Professeur",
       },
       auth: {
         title: "Connexion Educonnect",
@@ -392,6 +393,7 @@ const resources = {
         comingSoon: "قريباً",
         comingSoonTitle: "هذه الصفحة قادمة قريباً",
         comingSoonBody: "نقوم بإنهاء هذه الميزة وستكون متاحة قريباً.",
+        teacherLabel: "الأستاذ",
       },
       auth: {
         title: "تسجيل الدخول Educonnect",
