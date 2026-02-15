@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -25,6 +25,7 @@ const STORAGE_KEY = "educonnect_auth";
 export function StudentDashboardLayout({ auth, children }: StudentDashboardLayoutProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="dashboard-shell">
@@ -86,14 +87,42 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
         <NavLink to="/calendar" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.student.calendar")}
         </NavLink>
-        <NavLink
-          to="/dashboard/student/sessions"
-          className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}
+        <button
+          className={`mobile-nav__item${isMobileMenuOpen ? " active" : ""}`}
+          type="button"
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
         >
-          {t("navigation.student.sessions")}
-        </NavLink>
-        <div className="mobile-nav__item disabled">{t("navigation.student.messages")}</div>
+          {t("navigation.student.more")}
+        </button>
       </nav>
+
+      {isMobileMenuOpen ? (
+        <>
+          <button
+            className="mobile-nav-overlay"
+            type="button"
+            aria-label="Fermer le menu"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="mobile-nav-drawer" role="dialog" aria-label="Plus de navigation">
+            <NavLink to="/dashboard/student/sessions" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
+              {t("navigation.student.sessions")}
+            </NavLink>
+            <div className="mobile-nav-drawer__item disabled">
+              <span>{t("navigation.student.messages")}</span>
+              <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
+            </div>
+            <div className="mobile-nav-drawer__item disabled">
+              <span>{t("navigation.student.subscriptions")}</span>
+              <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
+            </div>
+            <div className="mobile-nav-drawer__item disabled">
+              <span>{t("navigation.student.progress")}</span>
+              <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
