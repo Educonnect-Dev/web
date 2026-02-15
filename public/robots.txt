@@ -1,0 +1,14 @@
+User-agent: *
+Disallow: /dashboard/
+Disallow: /onboarding/
+Disallow: /login
+Disallow: /register
+Disallow: /verify-email
+Disallow: /admin/
+Disallow: /messages
+Disallow: /calendar
+Disallow: /subscriptions
+Allow: /public-profiles/
+Allow: /search/teachers
+
+Sitemap: https://educonnect-dz.com/sitemap.xml

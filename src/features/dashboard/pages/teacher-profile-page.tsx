@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost, API_BASE_URL } from "../../../services/api-client";
@@ -194,9 +194,9 @@ export function TeacherProfilePage() {
           <h1>{t("teacherPages.teacherProfileTitle")}</h1>
         </div>
         <div className="dashboard-actions">
-          <a className="btn btn-ghost" href="/onboarding/teacher-profile">
+          <Link className="btn btn-ghost" to="/onboarding/teacher-profile">
             {t("teacherPages.updateProfile")}
-          </a>
+          </Link>
         </div>
       </div>
       <div className="dashboard-columns">

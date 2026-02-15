@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
 import { useLanguage } from "../../shared/hooks/use-language";
@@ -63,9 +63,9 @@ export function CompleteStudentProfilePage() {
       <div className="auth-shell">
         <div className="auth-card">
           <h1 className="auth-title">Compléter le profil élève</h1>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             Se connecter
-          </a>
+          </Link>
         </div>
       </div>
     );

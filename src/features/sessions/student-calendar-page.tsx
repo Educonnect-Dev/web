@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
@@ -28,11 +29,16 @@ type Session = {
 };
 
 export function StudentCalendarPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [enrolledSessions, setEnrolledSessions] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.title = `${t("studentPages.calendarTitle")} | Educonnect`;
+  }, [i18n.language, t]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -126,9 +132,9 @@ export function StudentCalendarPage() {
         <div className="auth-card">
           <h1 className="auth-title">{t("studentPages.loginTitleCalendar")}</h1>
           <p>{t("auth.loginAsStudent")}</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             {t("auth.loginCta")}
-          </a>
+          </Link>
         </div>
       </div>
     );

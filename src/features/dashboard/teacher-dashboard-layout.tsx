@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiPost } from "../../services/api-client";
@@ -39,9 +39,9 @@ export function TeacherDashboardLayout() {
         <div className="dashboard-card">
           <h2>Accès réservé</h2>
           <p>Connecte‑toi en tant que prof pour accéder au dashboard.</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             Se connecter
-          </a>
+          </Link>
         </div>
       </div>
     );

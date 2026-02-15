@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -85,9 +85,9 @@ export function StudentMessagesPage() {
         <div className="auth-card">
           <h1 className="auth-title">{t("studentPages.loginTitleMessages")}</h1>
           <p>{t("auth.loginAsStudent")}</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             {t("auth.loginCta")}
-          </a>
+          </Link>
         </div>
       </div>
     );

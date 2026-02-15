@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -19,6 +20,7 @@ const STORAGE_KEY = "educonnect_auth";
 export function TeacherDashboardPage() {
   const { t } = useTranslation();
   const [auth, setAuth] = useState<AuthState | null>(null);
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<{
     contentsCount: number;
     subscribersCount: number;
@@ -57,9 +59,9 @@ export function TeacherDashboardPage() {
         <div className="dashboard-card">
           <h2>{t("auth.reserved")}</h2>
           <p>{t("auth.loginAsTeacher")}</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             {t("auth.loginCta")}
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -85,7 +87,7 @@ export function TeacherDashboardPage() {
             onClick={async () => {
               await apiPost("/auth/logout", {});
               window.localStorage.removeItem(STORAGE_KEY);
-              window.location.href = "/login";
+              navigate("/login", { replace: true });
             }}
           >
             Déconnexion

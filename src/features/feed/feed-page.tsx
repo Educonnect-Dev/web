@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { apiGet } from "../../services/api-client";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
@@ -94,9 +95,9 @@ export function FeedPage() {
         <div className="auth-card">
           <h1 className="auth-title">{t("studentPages.loginTitleFeed")}</h1>
           <p>{t("auth.loginAsStudent")}</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             {t("auth.loginCta")}
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -135,7 +136,7 @@ export function FeedPage() {
                   <div className="feed-card__body">
                     <div className="feed-card__eyebrow">{item.type.toUpperCase()}</div>
                     <h3 className="feed-card__title">{item.title}</h3>
-                    <a className="content-author content-author--link" href={`/public-profiles/${item.teacherId}`}>
+                    <Link className="content-author content-author--link" to={`/public-profiles/${item.teacherId}`}>
                       <span className="content-author__avatar">
                         {item.teacherAvatarUrl ? (
                           <img src={item.teacherAvatarUrl} alt="" loading="lazy" />
@@ -146,7 +147,7 @@ export function FeedPage() {
                       <strong className="content-author__name">
                         {item.teacherName ?? "Professeur"}
                       </strong>
-                    </a>
+                    </Link>
                     <div className="feed-card__meta">
                       <span className="feed-card__price">
                         {item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}

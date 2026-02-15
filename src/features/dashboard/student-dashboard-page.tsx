@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { apiGet } from "../../services/api-client";
 import { StudentDashboardLayout } from "./student-dashboard-layout";
@@ -137,9 +138,9 @@ export function StudentDashboardPage() {
         <div className="dashboard-card">
           <h2>{t("auth.reserved")}</h2>
           <p>{t("auth.loginAsStudent")}</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             {t("auth.loginCta")}
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -153,9 +154,9 @@ export function StudentDashboardPage() {
           <p>{t("studentDashboard.welcome", { email: auth.user.email })}</p>
         </div>
         <div className="dashboard-actions">
-          <a className="btn btn-ghost" href="/search/teachers">
+          <Link className="btn btn-ghost" to="/search/teachers">
             {t("studentDashboard.searchCta")}
-          </a>
+          </Link>
           <button className="btn btn-primary">{t("studentDashboard.loadMore")}</button>
         </div>
       </header>

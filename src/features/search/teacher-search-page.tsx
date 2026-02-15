@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
 import { useLanguage } from "../../shared/hooks/use-language";
@@ -137,9 +138,9 @@ export function TeacherSearchPage() {
         <div className="auth-card">
           <h1 className="auth-title">{t("search.title")}</h1>
           <p>{t("auth.loginAsStudent")}</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             {t("auth.loginCta")}
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -260,9 +261,9 @@ export function TeacherSearchPage() {
                     >
                       {isTeacherSubscribed ? t("search.subscribed") : t("search.subscribe")}
                     </button>
-                    <a className="btn btn-ghost" href={`/public-profiles/${profile.userId}`}>
+                    <Link className="btn btn-ghost" to={`/public-profiles/${profile.userId}`}>
                       {t("search.openProfile")}
-                    </a>
+                    </Link>
                   </div>
                   {statusByTeacher[profile.userId] === "error" ? (
                     <span className="search-helper search-helper--error">

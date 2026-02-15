@@ -1,4 +1,5 @@
 import { renderToString } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
@@ -55,7 +56,11 @@ describe("FeedPage", () => {
     (React.useState as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => states.shift() as any);
 
     const { FeedPage } = await import("./feed-page");
-    const html = renderToString(<FeedPage />);
+    const html = renderToString(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    );
     expect(html).toContain('href="/public-profiles/teacher-1"');
     expect(html).toContain('<strong class="content-author__name">Professeur Demo</strong>');
     expect(html).toContain('class="feed-card__title"');

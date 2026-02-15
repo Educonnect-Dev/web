@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { apiGet, apiPost, API_BASE_URL } from "../../services/api-client";
 import { gradeOptions, subjectOptions, teachingLevelOptions } from "./profile-options";
@@ -83,9 +83,9 @@ export function CompleteTeacherProfilePage() {
         <div className="auth-card">
           <h1 className="auth-title">Compléter le profil</h1>
           <p>Connecte‑toi en tant que prof pour continuer.</p>
-          <a className="btn btn-primary" href="/login">
+          <Link className="btn btn-primary" to="/login">
             Se connecter
-          </a>
+          </Link>
         </div>
       </div>
     );

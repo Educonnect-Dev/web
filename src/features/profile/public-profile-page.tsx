@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactElement } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
 import { useLanguage } from "../../shared/hooks/use-language";
@@ -126,9 +126,9 @@ export function PublicProfilePage() {
             <h1>{t("publicProfile.title")}</h1>
             <p className="profile-subtitle">{t("publicProfile.subtitle")}</p>
           </div>
-          <a className="profile-back" href="/search/teachers">
+          <Link className="profile-back" to="/search/teachers">
             {t("publicProfile.back")}
-          </a>
+          </Link>
         </header>
         <div className="profile-content">
           <div className="profile-card profile-card--notice">{t("publicProfile.missingId")}</div>
@@ -147,9 +147,9 @@ export function PublicProfilePage() {
             <h1>{t("publicProfile.title")}</h1>
             <p className="profile-subtitle">{t("publicProfile.subtitle")}</p>
           </div>
-          <a className="profile-back" href="/search/teachers">
+          <Link className="profile-back" to="/search/teachers">
             {t("publicProfile.back")}
-          </a>
+          </Link>
         </header>
         <div className="profile-content">
           <div className="profile-card profile-card--notice">{t("publicProfile.loading")}</div>
@@ -167,9 +167,9 @@ export function PublicProfilePage() {
           <h1>{t("publicProfile.title")}</h1>
           <p className="profile-subtitle">{t("publicProfile.subtitle")}</p>
         </div>
-        <a className="profile-back" href="/search/teachers">
+        <Link className="profile-back" to="/search/teachers">
           {t("publicProfile.back")}
-        </a>
+        </Link>
       </header>
       <div className="profile-content">
         <TeacherProfileView
