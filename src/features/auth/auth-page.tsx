@@ -30,6 +30,13 @@ type AuthPageProps = {
   initialMode?: AuthMode;
 };
 
+const TECHNICAL_ERROR_PATTERNS = [
+  /^Cannot\s+(GET|POST|PUT|PATCH|DELETE)\s+/i,
+  /failed to fetch/i,
+  /networkerror/i,
+  /unexpected token/i,
+];
+
 export function AuthPage({
   onAuthenticated,
   onLanguageChange,
@@ -94,7 +101,7 @@ export function AuthPage({
       if (mode === "register") {
         const response = await apiPost<AuthResponse>("/users", { email, password, role });
         if (response.error) {
-          setError({ message: response.error.message, details: response.error.details });
+          setError({ message: toSoftAuthErrorMessage(response.error.code, response.error.message, t) });
         } else if (response.data?.verificationRequired) {
           navigate(`/verify-email?email=${encodeURIComponent(email)}`);
         } else if (response.data?.accessToken) {
@@ -111,7 +118,7 @@ export function AuthPage({
             navigate(`/verify-email?email=${encodeURIComponent(email)}`);
             return;
           }
-          setError({ message: response.error.message, details: response.error.details });
+          setError({ message: toSoftAuthErrorMessage(response.error.code, response.error.message, t) });
         } else if (response.data) {
           setResult(response.data);
           onAuthenticated?.(response.data);
@@ -121,7 +128,7 @@ export function AuthPage({
         }
       }
     } catch {
-      setError({ message: t("auth.errorTitle") });
+      setError({ message: t("auth.softTemporary") });
     } finally {
       setIsSubmitting(false);
     }
@@ -219,15 +226,6 @@ export function AuthPage({
             <div className="auth-error">
               <strong>{t("auth.errorTitle")}</strong>
               <div>{error.message}</div>
-              {error.details ? (
-                <ul className="auth-details">
-                  {Array.isArray(error.details)
-                    ? error.details.map((item, index) => (
-                        <li key={`${index}-${String(item)}`}>{String(item)}</li>
-                      ))
-                    : String(error.details)}
-                </ul>
-              ) : null}
             </div>
           ) : null}
 
@@ -257,4 +255,24 @@ async function persistLanguage(auth: AuthResponse, language: "fr" | "ar") {
     { language },
     buildAuthHeaders(auth),
   );
+}
+
+function toSoftAuthErrorMessage(
+  code: string | undefined,
+  message: string | undefined,
+  t: (key: string) => string,
+): string {
+  if (code === "INVALID_CREDENTIALS") return t("auth.softInvalidCredentials");
+  if (code === "EMAIL_ALREADY_EXISTS") return t("auth.softEmailExists");
+  if (code === "RATE_LIMIT") return t("auth.softRateLimit");
+  if (code === "EMAIL_NOT_VERIFIED") return t("auth.softEmailNotVerified");
+  if (code === "UNAUTHORIZED") return t("auth.softUnauthorized");
+
+  const input = message ?? "";
+  const isTechnical = TECHNICAL_ERROR_PATTERNS.some((pattern) => pattern.test(input));
+  if (isTechnical || code?.startsWith("HTTP_")) {
+    return t("auth.softTemporary");
+  }
+
+  return input || t("auth.softTemporary");
 }

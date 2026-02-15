@@ -13,8 +13,9 @@ export type ApiResponse<T> = {
 
 const AUTH_STORAGE_KEY = "educonnect_auth";
 
-export const API_BASE_URL = (import.meta as { env: Record<string, string | undefined> }).env
-  .VITE_API_BASE_URL ?? "http://localhost:3000";
+export const API_BASE_URL = normalizeApiBaseUrl(
+  (import.meta as { env: Record<string, string | undefined> }).env.VITE_API_BASE_URL,
+);
 
 export async function apiPost<T>(
   path: string,
@@ -36,7 +37,7 @@ async function apiRequest<T>(
   options?: { skipRefresh?: boolean },
 ): Promise<ApiResponse<T>> {
   const authHeaders = getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     method,
     headers: { "Content-Type": "application/json", ...authHeaders, ...(headers ?? {}) },
     credentials: "include",
@@ -71,7 +72,7 @@ function getAuthHeaders(): Record<string, string> {
 
 async function refreshAccessToken(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+  const response = await fetch(buildApiUrl("/auth/refresh"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -91,4 +92,16 @@ async function refreshAccessToken(): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+function buildApiUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
+
+function normalizeApiBaseUrl(raw: string | undefined): string {
+  const fallback = "http://localhost:3000";
+  const input = (raw ?? fallback).trim();
+  const withScheme = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+  return withScheme.replace(/\/+$/, "");
 }
