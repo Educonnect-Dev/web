@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -14,15 +14,28 @@ type AuthState = {
   accessToken: string;
 };
 
+type NotificationItem = {
+  id: string;
+  type: "session_reminder" | "new_content";
+  title: string;
+  message: string;
+  readAt?: string;
+  createdAt: string;
+};
+
 const STORAGE_KEY = "educonnect_auth";
 
 export function TeacherDashboardLayout() {
   const [auth, setAuth] = useState<AuthState | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const desktopBellRef = useRef<HTMLButtonElement | null>(null);
+  const mobileBellRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -38,20 +51,34 @@ export function TeacherDashboardLayout() {
   useEffect(() => {
     if (!auth || auth.user.role !== "teacher") return;
     let active = true;
-    const loadUnread = async () => {
-      const response = await apiGet<Array<{ id: string }>>("/notifications/me?unreadOnly=true&limit=100");
+    const loadNotifications = async () => {
+      const response = await apiGet<NotificationItem[]>("/notifications/me?limit=8");
       if (!active || !response.data) return;
-      setUnreadNotifications(response.data.length);
+      setNotifications(response.data);
+      setUnreadNotifications(response.data.filter((item) => !item.readAt).length);
     };
-    void loadUnread();
+    void loadNotifications();
     const intervalId = window.setInterval(() => {
-      void loadUnread();
+      void loadNotifications();
     }, 60000);
     return () => {
       active = false;
       window.clearInterval(intervalId);
     };
   }, [auth]);
+
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (panelRef.current?.contains(target)) return;
+      if (desktopBellRef.current?.contains(target)) return;
+      if (mobileBellRef.current?.contains(target)) return;
+      setIsNotificationsOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [isNotificationsOpen]);
 
   if (!auth || auth.user.role !== "teacher") {
     return (
@@ -68,13 +95,19 @@ export function TeacherDashboardLayout() {
   }
 
   const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
+  const dateLocale = i18n.language === "ar" ? "ar-DZ" : "fr-FR";
 
-  const handleNotificationsClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (location.pathname !== "/dashboard/teacher") return;
-    const target = document.getElementById("notifications");
-    if (!target) return;
-    event.preventDefault();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleBellToggle = () => {
+    setIsMobileMenuOpen(false);
+    setIsNotificationsOpen((prev) => !prev);
+  };
+
+  const handleMarkAllRead = async () => {
+    const response = await apiPost<{ modified: number }>("/notifications/read-all", {});
+    if (!response.data) return;
+    const nowIso = new Date().toISOString();
+    setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? nowIso })));
+    setUnreadNotifications(0);
   };
 
   return (
@@ -82,15 +115,16 @@ export function TeacherDashboardLayout() {
       <aside className="dashboard-sidebar">
         <div className="dashboard-logo-row">
           <div className="dashboard-logo">Educonnect</div>
-          <Link
+          <button
             className="dashboard-bell"
-            to="/dashboard/teacher#notifications"
             aria-label={t("navigation.teacher.notifications")}
-            onClick={handleNotificationsClick}
+            type="button"
+            onClick={handleBellToggle}
+            ref={desktopBellRef}
           >
             <span aria-hidden="true">🔔</span>
             {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
-          </Link>
+          </button>
         </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard/teacher" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
@@ -146,6 +180,35 @@ export function TeacherDashboardLayout() {
         <Outlet context={{ auth }} />
       </main>
 
+      {isNotificationsOpen ? (
+        <div className="dashboard-notif-popover" ref={panelRef} role="dialog" aria-label={t("navigation.teacher.notifications")}>
+          <div className="dashboard-notif-popover__header">
+            <strong>{t("teacherDashboard.notificationsTitle")}</strong>
+            {unreadNotifications ? (
+              <button className="btn btn-ghost" type="button" onClick={handleMarkAllRead}>
+                {t("teacherDashboard.markAllRead")}
+              </button>
+            ) : null}
+          </div>
+          <div className="dashboard-notif-popover__list">
+            {notifications.length ? (
+              notifications.map((notification) => (
+                <article
+                  key={notification.id}
+                  className={`dashboard-notif-item${notification.readAt ? "" : " dashboard-notif-item--unread"}`}
+                >
+                  <strong>{notification.title}</strong>
+                  <p>{notification.message}</p>
+                  <small>{new Date(notification.createdAt).toLocaleString(dateLocale)}</small>
+                </article>
+              ))
+            ) : (
+              <div className="dashboard-notif-empty">{t("teacherDashboard.notificationsEmpty")}</div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       <nav className="mobile-nav" aria-label="Navigation prof">
         <NavLink to="/dashboard/teacher" end className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.teacher.home")}
@@ -153,14 +216,15 @@ export function TeacherDashboardLayout() {
         <NavLink to="/dashboard/teacher/sessions" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.teacher.sessions")}
         </NavLink>
-        <Link
+        <button
           className="mobile-nav__item mobile-nav__item--bell"
-          to="/dashboard/teacher#notifications"
-          onClick={handleNotificationsClick}
+          type="button"
+          onClick={handleBellToggle}
+          ref={mobileBellRef}
         >
           <span aria-hidden="true">🔔</span>
           {unreadNotifications ? <span className="mobile-nav__badge">{unreadLabel}</span> : null}
-        </Link>
+        </button>
         <button
           className={`mobile-nav__item${isMobileMenuOpen ? " active" : ""}`}
           type="button"

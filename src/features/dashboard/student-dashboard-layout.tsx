@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -20,26 +20,40 @@ type StudentDashboardLayoutProps = {
   children: ReactNode;
 };
 
+type NotificationItem = {
+  id: string;
+  type: "session_reminder" | "new_content";
+  title: string;
+  message: string;
+  readAt?: string;
+  createdAt: string;
+};
+
 const STORAGE_KEY = "educonnect_auth";
 
 export function StudentDashboardLayout({ auth, children }: StudentDashboardLayoutProps) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const desktopBellRef = useRef<HTMLButtonElement | null>(null);
+  const mobileBellRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (auth.user.role !== "student") return;
     let active = true;
-    const loadUnread = async () => {
-      const response = await apiGet<Array<{ id: string }>>("/notifications/me?unreadOnly=true&limit=100");
+    const loadNotifications = async () => {
+      const response = await apiGet<NotificationItem[]>("/notifications/me?limit=8");
       if (!active || !response.data) return;
-      setUnreadNotifications(response.data.length);
+      setNotifications(response.data);
+      setUnreadNotifications(response.data.filter((item) => !item.readAt).length);
     };
-    void loadUnread();
+    void loadNotifications();
     const intervalId = window.setInterval(() => {
-      void loadUnread();
+      void loadNotifications();
     }, 60000);
     return () => {
       active = false;
@@ -47,14 +61,33 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
     };
   }, [auth.user.role]);
 
-  const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (panelRef.current?.contains(target)) return;
+      if (desktopBellRef.current?.contains(target)) return;
+      if (mobileBellRef.current?.contains(target)) return;
+      setIsNotificationsOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [isNotificationsOpen]);
 
-  const handleNotificationsClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (location.pathname !== "/dashboard/student") return;
-    const target = document.getElementById("notifications");
-    if (!target) return;
-    event.preventDefault();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
+  const dateLocale = i18n.language === "ar" ? "ar-DZ" : "fr-FR";
+
+  const handleBellToggle = () => {
+    setIsMobileMenuOpen(false);
+    setIsNotificationsOpen((prev) => !prev);
+  };
+
+  const handleMarkAllRead = async () => {
+    const response = await apiPost<{ modified: number }>("/notifications/read-all", {});
+    if (!response.data) return;
+    const nowIso = new Date().toISOString();
+    setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? nowIso })));
+    setUnreadNotifications(0);
   };
 
   return (
@@ -62,15 +95,16 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
       <aside className="dashboard-sidebar">
         <div className="dashboard-logo-row">
           <div className="dashboard-logo">Educonnect</div>
-          <Link
+          <button
             className="dashboard-bell"
-            to="/dashboard/student#notifications"
             aria-label={t("navigation.student.notifications")}
-            onClick={handleNotificationsClick}
+            type="button"
+            onClick={handleBellToggle}
+            ref={desktopBellRef}
           >
             <span aria-hidden="true">🔔</span>
             {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
-          </Link>
+          </button>
         </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard/student" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
@@ -118,6 +152,35 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
 
       <main className="dashboard-main">{children}</main>
 
+      {isNotificationsOpen ? (
+        <div className="dashboard-notif-popover" ref={panelRef} role="dialog" aria-label={t("navigation.student.notifications")}>
+          <div className="dashboard-notif-popover__header">
+            <strong>{t("studentDashboard.notificationsTitle")}</strong>
+            {unreadNotifications ? (
+              <button className="btn btn-ghost" type="button" onClick={handleMarkAllRead}>
+                {t("studentDashboard.markAllRead")}
+              </button>
+            ) : null}
+          </div>
+          <div className="dashboard-notif-popover__list">
+            {notifications.length ? (
+              notifications.map((notification) => (
+                <article
+                  key={notification.id}
+                  className={`dashboard-notif-item${notification.readAt ? "" : " dashboard-notif-item--unread"}`}
+                >
+                  <strong>{notification.title}</strong>
+                  <p>{notification.message}</p>
+                  <small>{new Date(notification.createdAt).toLocaleString(dateLocale)}</small>
+                </article>
+              ))
+            ) : (
+              <div className="dashboard-notif-empty">{t("studentDashboard.notificationsEmpty")}</div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       <nav className="mobile-nav" aria-label="Navigation élève">
         <NavLink to="/dashboard/student" end className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.student.home")}
@@ -128,14 +191,15 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
         <NavLink to="/calendar" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.student.calendar")}
         </NavLink>
-        <Link
+        <button
           className="mobile-nav__item mobile-nav__item--bell"
-          to="/dashboard/student#notifications"
-          onClick={handleNotificationsClick}
+          type="button"
+          onClick={handleBellToggle}
+          ref={mobileBellRef}
         >
           <span aria-hidden="true">🔔</span>
           {unreadNotifications ? <span className="mobile-nav__badge">{unreadLabel}</span> : null}
-        </Link>
+        </button>
         <button
           className={`mobile-nav__item${isMobileMenuOpen ? " active" : ""}`}
           type="button"
