@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { apiGet } from "../../services/api-client";
+import { apiGet, apiPost } from "../../services/api-client";
 import { formatTeacherDisplayName } from "../../utils/teacher-display";
 import { StudentDashboardLayout } from "./student-dashboard-layout";
 
@@ -33,6 +33,17 @@ type FeedItem = {
 type FeedMeta = {
   nextPage: number | null;
   total: number;
+};
+
+type NotificationItem = {
+  id: string;
+  userId: string;
+  type: "session_reminder" | "new_content";
+  title: string;
+  message: string;
+  link?: string;
+  readAt?: string;
+  createdAt: string;
 };
 
 type StudentDashboardSummary = {
@@ -80,6 +91,7 @@ export function StudentDashboardPage() {
   const { t } = useTranslation();
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [summary, setSummary] = useState<StudentDashboardSummary | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -103,6 +115,15 @@ export function StudentDashboardPage() {
         setItems(response.data.feed.items);
         const meta = response.data.feed as FeedMeta;
         setNextPage(meta.nextPage ?? null);
+      }
+    });
+  }, [auth]);
+
+  useEffect(() => {
+    if (!auth || auth.user.role !== "student") return;
+    apiGet<NotificationItem[]>("/notifications/me?limit=8").then((response) => {
+      if (response.data) {
+        setNotifications(response.data);
       }
     });
   }, [auth]);
@@ -132,6 +153,15 @@ export function StudentDashboardPage() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, [isLoading, nextPage, auth]);
+
+  const handleMarkAllNotificationsRead = async () => {
+    if (!auth || auth.user.role !== "student") return;
+    const response = await apiPost<{ modified: number }>("/notifications/read-all", {});
+    if (response.data) {
+      const nowIso = new Date().toISOString();
+      setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? nowIso })));
+    }
+  };
 
   if (!auth || auth.user.role !== "student") {
     return (
@@ -271,6 +301,41 @@ export function StudentDashboardPage() {
                   <div>
                     <strong>{t("studentDashboard.noneRecommendations")}</strong>
                     <p>{t("studentDashboard.discoverBySubject")}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div id="notifications" className="dashboard-card compact">
+            <div className="row-actions">
+              <h3>{t("studentDashboard.notificationsTitle")}</h3>
+              {notifications.some((item) => !item.readAt) ? (
+                <button className="btn btn-ghost" type="button" onClick={handleMarkAllNotificationsRead}>
+                  {t("studentDashboard.markAllRead")}
+                </button>
+              ) : null}
+            </div>
+            <div className="dashboard-list">
+              {notifications.length ? (
+                notifications.map((notification) => (
+                  <div key={notification.id} className="dashboard-row">
+                    <div>
+                      <strong>{notification.title}</strong>
+                      <p>{notification.message}</p>
+                      <p>{new Date(notification.createdAt).toLocaleString("fr-FR")}</p>
+                    </div>
+                    <span className={`status ${notification.readAt ? "" : "live"}`}>
+                      {notification.type === "session_reminder"
+                        ? t("studentDashboard.notificationSessionReminder")
+                        : t("studentDashboard.notificationNewContent")}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="dashboard-row">
+                  <div>
+                    <strong>{t("studentDashboard.notificationsEmpty")}</strong>
                   </div>
                 </div>
               )}

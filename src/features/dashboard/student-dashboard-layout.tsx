@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiPost } from "../../services/api-client";
+import { apiGet, apiPost } from "../../services/api-client";
 
 type AuthUser = {
   id: string;
@@ -26,11 +26,42 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    if (auth.user.role !== "student") return;
+    let active = true;
+    const loadUnread = async () => {
+      const response = await apiGet<Array<{ id: string }>>("/notifications/me?unreadOnly=true&limit=100");
+      if (!active || !response.data) return;
+      setUnreadNotifications(response.data.length);
+    };
+    void loadUnread();
+    const intervalId = window.setInterval(() => {
+      void loadUnread();
+    }, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [auth.user.role]);
+
+  const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
 
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
-        <div className="dashboard-logo">Educonnect</div>
+        <div className="dashboard-logo-row">
+          <div className="dashboard-logo">Educonnect</div>
+          <Link
+            className="dashboard-bell"
+            to="/dashboard/student#notifications"
+            aria-label={t("navigation.student.notifications")}
+          >
+            <span aria-hidden="true">🔔</span>
+            {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
+          </Link>
+        </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard/student" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
             {t("navigation.student.overview")}
@@ -87,6 +118,10 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
         <NavLink to="/calendar" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.student.calendar")}
         </NavLink>
+        <Link className="mobile-nav__item mobile-nav__item--bell" to="/dashboard/student#notifications">
+          <span aria-hidden="true">🔔</span>
+          {unreadNotifications ? <span className="mobile-nav__badge">{unreadLabel}</span> : null}
+        </Link>
         <button
           className={`mobile-nav__item${isMobileMenuOpen ? " active" : ""}`}
           type="button"

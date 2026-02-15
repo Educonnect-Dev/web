@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiPost } from "../../services/api-client";
+import { apiGet, apiPost } from "../../services/api-client";
 type AuthUser = {
   id: string;
   email: string;
@@ -21,6 +21,7 @@ export function TeacherDashboardLayout() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -32,6 +33,24 @@ export function TeacherDashboardLayout() {
       setAuth(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (!auth || auth.user.role !== "teacher") return;
+    let active = true;
+    const loadUnread = async () => {
+      const response = await apiGet<Array<{ id: string }>>("/notifications/me?unreadOnly=true&limit=100");
+      if (!active || !response.data) return;
+      setUnreadNotifications(response.data.length);
+    };
+    void loadUnread();
+    const intervalId = window.setInterval(() => {
+      void loadUnread();
+    }, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [auth]);
 
   if (!auth || auth.user.role !== "teacher") {
     return (
@@ -47,10 +66,22 @@ export function TeacherDashboardLayout() {
     );
   }
 
+  const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
+
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
-        <div className="dashboard-logo">Educonnect</div>
+        <div className="dashboard-logo-row">
+          <div className="dashboard-logo">Educonnect</div>
+          <Link
+            className="dashboard-bell"
+            to="/dashboard/teacher#notifications"
+            aria-label={t("navigation.teacher.notifications")}
+          >
+            <span aria-hidden="true">🔔</span>
+            {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
+          </Link>
+        </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard/teacher" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
             {t("navigation.teacher.overview")}
@@ -61,9 +92,12 @@ export function TeacherDashboardLayout() {
           <NavLink to="/dashboard/teacher/subscribers" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
             {t("navigation.teacher.subscribers")}
           </NavLink>
-        <NavLink to="/dashboard/teacher/sessions" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+          <NavLink to="/dashboard/teacher/sessions" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
           {t("navigation.teacher.sessions")}
         </NavLink>
+        <Link to="/dashboard/teacher#notifications" className="nav-item">
+          {t("navigation.teacher.notifications")}
+        </Link>
         <div className="nav-item disabled">
           <span className="nav-item__label">{t("navigation.teacher.sessionSubscribers")}</span>
           <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
@@ -109,6 +143,10 @@ export function TeacherDashboardLayout() {
         <NavLink to="/dashboard/teacher/sessions" className={({ isActive }) => `mobile-nav__item${isActive ? " active" : ""}`}>
           {t("navigation.teacher.sessions")}
         </NavLink>
+        <Link className="mobile-nav__item mobile-nav__item--bell" to="/dashboard/teacher#notifications">
+          <span aria-hidden="true">🔔</span>
+          {unreadNotifications ? <span className="mobile-nav__badge">{unreadLabel}</span> : null}
+        </Link>
         <button
           className={`mobile-nav__item${isMobileMenuOpen ? " active" : ""}`}
           type="button"
@@ -137,6 +175,9 @@ export function TeacherDashboardLayout() {
             <NavLink to="/dashboard/teacher/subscribers" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
               {t("navigation.teacher.subscribers")}
             </NavLink>
+            <Link to="/dashboard/teacher#notifications" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
+              {t("navigation.teacher.notifications")}
+            </Link>
             <div className="mobile-nav-drawer__item disabled">
               <span>{t("navigation.teacher.sessionSubscribers")}</span>
               <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiGet } from "../../../services/api-client";
+import { apiGet, apiPost } from "../../../services/api-client";
 
 type AuthContext = {
   auth: { user: { id: string; role: "student" | "teacher"; email: string } };
@@ -26,12 +26,22 @@ type Thread = {
   lastMessage: { content: string; createdAt: string };
 };
 
+type NotificationItem = {
+  id: string;
+  type: "session_reminder" | "new_content";
+  title: string;
+  message: string;
+  readAt?: string;
+  createdAt: string;
+};
+
 export function TeacherDashboardOverview() {
   const { auth } = useOutletContext<AuthContext>();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [alerts, setAlerts] = useState<Thread[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
     apiGet("/dashboard/teacher/summary").then((response) => {
@@ -47,7 +57,20 @@ export function TeacherDashboardOverview() {
         setAlerts(list.slice(0, 3));
       }
     });
+    apiGet<NotificationItem[]>("/notifications/me?limit=8").then((response) => {
+      if (response.data) {
+        setNotifications(response.data);
+      }
+    });
   }, [auth.user.id, auth.user.role]);
+
+  const handleMarkAllNotificationsRead = async () => {
+    const response = await apiPost<{ modified: number }>("/notifications/read-all", {});
+    if (response.data) {
+      const nowIso = new Date().toISOString();
+      setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? nowIso })));
+    }
+  };
 
   return (
     <>
@@ -125,6 +148,39 @@ export function TeacherDashboardOverview() {
               {t("teacherDashboard.viewStats")}
             </button>
           </div>
+          <div className="dashboard-card compact">
+            <div id="notifications" className="row-actions">
+              <h3>{t("teacherDashboard.notificationsTitle")}</h3>
+              {notifications.some((item) => !item.readAt) ? (
+                <button className="btn btn-ghost" type="button" onClick={handleMarkAllNotificationsRead}>
+                  {t("teacherDashboard.markAllRead")}
+                </button>
+              ) : null}
+            </div>
+            <div className="dashboard-list">
+              {notifications.length ? (
+                notifications.map((notification) => (
+                  <div key={notification.id} className="dashboard-row">
+                    <div>
+                      <strong>{notification.title}</strong>
+                      <p>{notification.message}</p>
+                      <p>{new Date(notification.createdAt).toLocaleString("fr-FR")}</p>
+                    </div>
+                    <span className={`status ${notification.readAt ? "" : "live"}`}>
+                      {t("teacherDashboard.notificationTag")}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="dashboard-row">
+                  <div>
+                    <strong>{t("teacherDashboard.notificationsEmpty")}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="dashboard-card compact">
             <h3>{t("teacherDashboard.todayTodo")}</h3>
             <ul className="dashboard-todo">
