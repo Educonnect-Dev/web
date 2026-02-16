@@ -811,6 +811,15 @@
     grid-column: 1 / -1;
     justify-self: start;
   }
+
+  .dashboard-card--public-preview .profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card--public-preview .profile-avatar {
+    width: 170px;
+    height: 170px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1907,6 +1916,19 @@ html[dir="rtl"] .testimonial-track {
 
 .dashboard-card.highlight {
   border-color: rgba(255, 177, 90, 0.6);
+}
+
+.dashboard-card--public-preview {
+  grid-column: 1 / -1;
+}
+
+.dashboard-card--public-preview .profile-hero {
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+}
+
+.dashboard-card--public-preview .profile-avatar {
+  width: 220px;
+  height: 220px;
 }
 
 .dashboard-value {

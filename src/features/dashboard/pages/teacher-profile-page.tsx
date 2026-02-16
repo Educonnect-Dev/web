@@ -569,7 +569,7 @@ export function TeacherProfilePage() {
             <p>{t("teacherPages.loading")}</p>
           )}
         </div>
-        <div className="dashboard-card">
+        <div className="dashboard-card dashboard-card--public-preview">
           <h3>{t("teacherPages.publicProfileTitle")}</h3>
           {publicProfile ? <TeacherProfileView data={publicProfile} mode="preview" /> : <p>{t("teacherPages.loading")}</p>}
         </div>
