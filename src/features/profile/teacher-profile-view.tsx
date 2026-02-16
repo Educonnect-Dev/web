@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 
 import { useLanguage } from "../../shared/hooks/use-language";
 import { formatTeacherDisplayName } from "../../utils/teacher-display";
@@ -12,12 +12,28 @@ type PublicProfile = {
     firstName?: string;
     lastName?: string;
     bio?: string;
+    headline?: string;
+    teachingApproach?: string;
     subject: string;
     level?: string;
     isVerified: boolean;
     teachingLevel?: "lycee" | "cem";
     currentPosition?: string;
     experienceYears?: number;
+    city?: string;
+    languages?: string[];
+    specialtyTags?: string[];
+    contactWhatsapp?: string;
+    contactTelegram?: string;
+    websiteUrl?: string;
+    youtubeUrl?: string;
+    linkedinUrl?: string;
+    instagramUrl?: string;
+    facebookUrl?: string;
+    tiktokUrl?: string;
+    bookingUrl?: string;
+    coverImageUrl?: string;
+    accentColor?: string;
     avatarUrl?: string;
   };
   contents: Array<{
@@ -35,7 +51,6 @@ type PublicProfile = {
 const translations: Record<Language, Record<string, string>> = {
   fr: {
     verified: "Profil vérifié",
-    notVerified: "Profil non vérifié",
     subscribe: "S'abonner",
     subscribedBadge: "Déjà abonné",
     accessBlockTitle: "Accès abonné",
@@ -54,10 +69,17 @@ const translations: Record<Language, Record<string, string>> = {
     positionLabel: "Poste",
     experienceLabel: "Ancienneté",
     teacherLabel: "Professeur",
+    approachTitle: "Méthode",
+    contactsTitle: "Contacts",
+    cityLabel: "Ville",
+    languagesLabel: "Langues",
+    specialtiesLabel: "Spécialités",
+    contentsCount: "Contenus",
+    offersCount: "Offres",
+    bookingCta: "Réserver un créneau",
   },
   ar: {
     verified: "ملف موثّق",
-    notVerified: "ملف غير موثّق",
     subscribe: "اشترك",
     subscribedBadge: "مشترك بالفعل",
     accessBlockTitle: "وصول المشترك",
@@ -76,6 +98,14 @@ const translations: Record<Language, Record<string, string>> = {
     positionLabel: "المنصب",
     experienceLabel: "الخبرة",
     teacherLabel: "الأستاذ",
+    approachTitle: "المنهجية",
+    contactsTitle: "جهات التواصل",
+    cityLabel: "المدينة",
+    languagesLabel: "اللغات",
+    specialtiesLabel: "التخصصات",
+    contentsCount: "المحتويات",
+    offersCount: "العروض",
+    bookingCta: "احجز موعدا",
   },
 };
 
@@ -108,10 +138,29 @@ export function TeacherProfileView({
     url: string;
     title: string;
   } | null>(null);
+  const profileStyle = {
+    ["--profile-accent" as string]: data.profile.accentColor ?? "#f38b1e",
+  } as CSSProperties;
+  const socialLinks = [
+    data.profile.websiteUrl ? { label: "Site", url: data.profile.websiteUrl } : null,
+    data.profile.youtubeUrl ? { label: "YouTube", url: data.profile.youtubeUrl } : null,
+    data.profile.linkedinUrl ? { label: "LinkedIn", url: data.profile.linkedinUrl } : null,
+    data.profile.instagramUrl ? { label: "Instagram", url: data.profile.instagramUrl } : null,
+    data.profile.facebookUrl ? { label: "Facebook", url: data.profile.facebookUrl } : null,
+    data.profile.tiktokUrl ? { label: "TikTok", url: data.profile.tiktokUrl } : null,
+    data.profile.contactTelegram
+      ? { label: "Telegram", url: `https://t.me/${data.profile.contactTelegram.replace(/^@/, "")}` }
+      : null,
+  ].filter(Boolean) as Array<{ label: string; url: string }>;
 
   return (
-    <div className="profile-view" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="profile-view" dir={isRtl ? "rtl" : "ltr"} style={profileStyle}>
       <section className="profile-card profile-card--hero">
+        {data.profile.coverImageUrl ? (
+          <div className="profile-cover">
+            <img src={data.profile.coverImageUrl} alt="" loading="lazy" />
+          </div>
+        ) : null}
         <div className="profile-hero">
           <div className="profile-avatar">
             {data.profile.avatarUrl ? (
@@ -122,17 +171,12 @@ export function TeacherProfileView({
           </div>
           <div className="profile-hero__text">
             <h2 className="profile-title">{profileDisplayName}</h2>
-            <p className="profile-status">
-              {data.profile.isVerified ? copy.verified : copy.notVerified}
-            </p>
+            {data.profile.isVerified ? <p className="profile-status">{copy.verified}</p> : null}
+            {data.profile.headline ? <p className="profile-headline">{data.profile.headline}</p> : null}
             {profileName ? <p className="profile-name">{data.profile.subject}</p> : null}
             {data.profile.bio ? <p className="profile-bio">{data.profile.bio}</p> : null}
           </div>
-          <span
-            className={`profile-verified ${data.profile.isVerified ? "is-verified" : "is-pending"}`}
-          >
-            {data.profile.isVerified ? "✓" : "•"}
-          </span>
+          {data.profile.isVerified ? <span className="profile-verified is-verified">✓</span> : null}
         </div>
         <div className="profile-meta">
           {data.profile.level ? (
@@ -155,7 +199,40 @@ export function TeacherProfileView({
               {copy.experienceLabel}: {data.profile.experienceYears} ans
             </span>
           ) : null}
+          {data.profile.city ? (
+            <span className="profile-tag">
+              {copy.cityLabel}: {data.profile.city}
+            </span>
+          ) : null}
+          {data.profile.languages?.length ? (
+            <span className="profile-tag">
+              {copy.languagesLabel}: {data.profile.languages.join(" • ")}
+            </span>
+          ) : null}
         </div>
+        <div className="profile-metrics">
+          <div className="profile-metric">
+            <strong>{data.contents.length}</strong>
+            <span>{copy.contentsCount}</span>
+          </div>
+          <div className="profile-metric">
+            <strong>{data.offers.length}</strong>
+            <span>{copy.offersCount}</span>
+          </div>
+          <div className="profile-metric">
+            <strong>{data.profile.experienceYears ?? 0}</strong>
+            <span>{copy.experienceLabel}</span>
+          </div>
+        </div>
+        {data.profile.specialtyTags?.length ? (
+          <div className="profile-specialties">
+            {data.profile.specialtyTags.map((tag) => (
+              <span key={tag} className="profile-chip">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {mode === "student" ? (
           <div className="profile-actions">
             <button
@@ -181,6 +258,48 @@ export function TeacherProfileView({
         <section className="profile-card profile-card--access">
           <h3>{copy.accessBlockTitle}</h3>
           <p>{copy.accessBlockDesc}</p>
+        </section>
+      ) : null}
+
+      {data.profile.teachingApproach ? (
+        <section className="profile-card profile-card--access">
+          <h3>{copy.approachTitle}</h3>
+          <p>{data.profile.teachingApproach}</p>
+        </section>
+      ) : null}
+
+      {(socialLinks.length || data.profile.contactWhatsapp) ? (
+        <section className="profile-section">
+          <div className="profile-section__header">
+            <h3>{copy.contactsTitle}</h3>
+          </div>
+          <div className="profile-actions">
+            {data.profile.contactWhatsapp ? (
+              <a
+                className="btn btn-ghost"
+                href={`https://wa.me/${data.profile.contactWhatsapp.replace(/[^\d+]/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                WhatsApp
+              </a>
+            ) : null}
+            {socialLinks.map((link) => (
+              <a key={link.label} className="btn btn-ghost" href={link.url} target="_blank" rel="noreferrer">
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {data.profile.bookingUrl ? (
+        <section className="profile-card profile-card--access">
+          <div className="profile-actions">
+            <a className="btn btn-primary" href={data.profile.bookingUrl} target="_blank" rel="noreferrer">
+              {copy.bookingCta}
+            </a>
+          </div>
         </section>
       ) : null}
 

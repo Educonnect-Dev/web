@@ -15,12 +15,28 @@ type PublicProfile = {
     firstName?: string;
     lastName?: string;
     bio?: string;
+    headline?: string;
+    teachingApproach?: string;
     subject: string;
     level?: string;
     isVerified: boolean;
     teachingLevel?: "lycee" | "cem";
     currentPosition?: string;
     experienceYears?: number;
+    city?: string;
+    languages?: string[];
+    specialtyTags?: string[];
+    contactWhatsapp?: string;
+    contactTelegram?: string;
+    websiteUrl?: string;
+    youtubeUrl?: string;
+    linkedinUrl?: string;
+    instagramUrl?: string;
+    facebookUrl?: string;
+    tiktokUrl?: string;
+    bookingUrl?: string;
+    coverImageUrl?: string;
+    accentColor?: string;
     avatarUrl?: string;
   };
   contents: Array<{

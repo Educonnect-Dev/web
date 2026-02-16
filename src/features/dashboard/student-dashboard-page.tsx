@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { apiGet, apiPost } from "../../services/api-client";
+import { apiGet } from "../../services/api-client";
 import { formatTeacherDisplayName } from "../../utils/teacher-display";
 import { StudentDashboardLayout } from "./student-dashboard-layout";
 
@@ -35,15 +35,9 @@ type FeedMeta = {
   total: number;
 };
 
-type NotificationItem = {
-  id: string;
-  userId: string;
-  type: "session_reminder" | "new_content";
-  title: string;
-  message: string;
-  link?: string;
-  readAt?: string;
-  createdAt: string;
+type StudentIdentity = {
+  firstName?: string;
+  lastName?: string;
 };
 
 type StudentDashboardSummary = {
@@ -90,8 +84,8 @@ const STORAGE_KEY = "educonnect_auth";
 export function StudentDashboardPage() {
   const { t } = useTranslation();
   const [auth, setAuth] = useState<AuthState | null>(null);
+  const [studentIdentity, setStudentIdentity] = useState<StudentIdentity | null>(null);
   const [summary, setSummary] = useState<StudentDashboardSummary | null>(null);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,21 +103,17 @@ export function StudentDashboardPage() {
 
   useEffect(() => {
     if (!auth) return;
+    apiGet<StudentIdentity>("/student-profiles/me").then((response) => {
+      if (response.data) {
+        setStudentIdentity(response.data);
+      }
+    });
     apiGet<StudentDashboardSummary>("/dashboard/student/summary").then((response) => {
       if (response.data) {
         setSummary(response.data);
         setItems(response.data.feed.items);
         const meta = response.data.feed as FeedMeta;
         setNextPage(meta.nextPage ?? null);
-      }
-    });
-  }, [auth]);
-
-  useEffect(() => {
-    if (!auth || auth.user.role !== "student") return;
-    apiGet<NotificationItem[]>("/notifications/me?limit=8").then((response) => {
-      if (response.data) {
-        setNotifications(response.data);
       }
     });
   }, [auth]);
@@ -154,15 +144,6 @@ export function StudentDashboardPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [isLoading, nextPage, auth]);
 
-  const handleMarkAllNotificationsRead = async () => {
-    if (!auth || auth.user.role !== "student") return;
-    const response = await apiPost<{ modified: number }>("/notifications/read-all", {});
-    if (response.data) {
-      const nowIso = new Date().toISOString();
-      setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? nowIso })));
-    }
-  };
-
   if (!auth || auth.user.role !== "student") {
     return (
       <div className="dashboard-shell">
@@ -177,12 +158,18 @@ export function StudentDashboardPage() {
     );
   }
 
+  const studentName = [studentIdentity?.firstName, studentIdentity?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const welcomeName = studentName || auth.user.email;
+
   return (
     <StudentDashboardLayout auth={auth}>
       <header className="dashboard-header">
         <div>
           <h1>{t("studentDashboard.title")}</h1>
-          <p>{t("studentDashboard.welcome", { email: auth.user.email })}</p>
+          <p>{t("studentDashboard.welcome", { email: welcomeName })}</p>
         </div>
         <div className="dashboard-actions">
           <Link className="btn btn-ghost" to="/search/teachers">
@@ -283,112 +270,6 @@ export function StudentDashboardPage() {
             )}
           </div>
 
-          <div className="dashboard-card compact">
-            <h3>{t("studentDashboard.recommendations")}</h3>
-            <div className="dashboard-list">
-              {summary?.recommendedTeachers.length ? (
-                summary.recommendedTeachers.map((teacher) => (
-                  <div key={teacher.teacherId} className="dashboard-row">
-                    <div>
-                      <strong>{teacher.subject}</strong>
-                      <p>{teacher.teachingLevel === "lycee" ? "Lycée" : "CEM"}</p>
-                    </div>
-                    <span className="status">{t("studentDashboard.viewProfile")}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="dashboard-row">
-                  <div>
-                    <strong>{t("studentDashboard.noneRecommendations")}</strong>
-                    <p>{t("studentDashboard.discoverBySubject")}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div id="notifications" className="dashboard-card compact">
-            <div className="row-actions">
-              <h3>{t("studentDashboard.notificationsTitle")}</h3>
-              {notifications.some((item) => !item.readAt) ? (
-                <button className="btn btn-ghost" type="button" onClick={handleMarkAllNotificationsRead}>
-                  {t("studentDashboard.markAllRead")}
-                </button>
-              ) : null}
-            </div>
-            <div className="dashboard-list">
-              {notifications.length ? (
-                notifications.map((notification) => (
-                  <div key={notification.id} className="dashboard-row">
-                    <div>
-                      <strong>{notification.title}</strong>
-                      <p>{notification.message}</p>
-                      <p>{new Date(notification.createdAt).toLocaleString("fr-FR")}</p>
-                    </div>
-                    <span className={`status ${notification.readAt ? "" : "live"}`}>
-                      {notification.type === "session_reminder"
-                        ? t("studentDashboard.notificationSessionReminder")
-                        : t("studentDashboard.notificationNewContent")}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="dashboard-row">
-                  <div>
-                    <strong>{t("studentDashboard.notificationsEmpty")}</strong>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="dashboard-card compact">
-            <h3>{t("studentDashboard.recentMessages")}</h3>
-            <div className="dashboard-list">
-              {summary?.recentMessages.length ? (
-                summary.recentMessages.map((message) => (
-                  <div key={message.threadId} className="dashboard-row">
-                    <div>
-                      <strong>{message.content}</strong>
-                      <p>{new Date(message.createdAt).toLocaleDateString("fr-FR")}</p>
-                    </div>
-                    <span className="status">{t("studentDashboard.new")}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="dashboard-row">
-                  <div>
-                    <strong>{t("studentDashboard.noneMessages")}</strong>
-                    <p>{t("studentDashboard.messagesHint")}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="dashboard-card compact">
-            <h3>{t("studentDashboard.subscriptionsTitle")}</h3>
-            <div className="dashboard-list">
-              {summary?.activeSubscriptions.length ? (
-                summary.activeSubscriptions.map((subscription) => (
-                  <div key={subscription.id} className="dashboard-row">
-                    <div>
-                      <strong>Prof {subscription.teacherId}</strong>
-                      <p>{t("studentDashboard.accessActive")}</p>
-                    </div>
-                    <span className="status live">{t("studentDashboard.active")}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="dashboard-row">
-                  <div>
-                    <strong>{t("studentDashboard.noneSubscriptions")}</strong>
-                    <p>{t("studentDashboard.subscribeHint")}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </section>
       </div>
     </StudentDashboardLayout>

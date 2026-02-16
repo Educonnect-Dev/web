@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../../services/api-client";
+import { formatTeacherDisplayName } from "../../../utils/teacher-display";
 
 type AuthContext = {
   auth: { user: { id: string; role: "student" | "teacher"; email: string } };
@@ -35,15 +36,26 @@ type NotificationItem = {
   createdAt: string;
 };
 
+type TeacherIdentity = {
+  firstName?: string;
+  lastName?: string;
+};
+
 export function TeacherDashboardOverview() {
   const { auth } = useOutletContext<AuthContext>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [teacherIdentity, setTeacherIdentity] = useState<TeacherIdentity | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [alerts, setAlerts] = useState<Thread[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
+    apiGet<TeacherIdentity>("/profiles/me").then((response) => {
+      if (response.data) {
+        setTeacherIdentity(response.data);
+      }
+    });
     apiGet("/dashboard/teacher/summary").then((response) => {
       if (response.data) {
         setSummary(response.data as Summary);
@@ -72,12 +84,20 @@ export function TeacherDashboardOverview() {
     }
   };
 
+  const teacherName = [teacherIdentity?.firstName, teacherIdentity?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const welcomeTeacher = teacherName
+    ? formatTeacherDisplayName(teacherName, t("common.teacherLabel"))
+    : auth.user.email;
+
   return (
     <>
       <header className="dashboard-header">
         <div>
           <h1>{t("teacherDashboard.title")}</h1>
-          <p>{t("teacherDashboard.welcome", { email: auth.user.email })}</p>
+          <p>{t("teacherDashboard.welcome", { email: welcomeTeacher })}</p>
         </div>
         <div className="dashboard-actions">
           <button className="btn btn-ghost" type="button" onClick={() => navigate("/dashboard/teacher/sessions")}>

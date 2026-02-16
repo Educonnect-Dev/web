@@ -90,6 +90,12 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
     setUnreadNotifications(0);
   };
 
+  const handleLogout = async () => {
+    await apiPost("/auth/logout", {});
+    window.localStorage.removeItem(STORAGE_KEY);
+    navigate("/login");
+  };
+
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
@@ -134,19 +140,12 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
             <span className="nav-item__label">{t("navigation.student.progress")}</span>
             <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
           </div>
+          <button className="nav-item" type="button" onClick={handleLogout}>
+            Déconnexion
+          </button>
         </nav>
         <div className="sidebar-footer">
           <span>{auth.user.email}</span>
-          <button
-            className="btn btn-ghost"
-            onClick={async () => {
-              await apiPost("/auth/logout", {});
-              window.localStorage.removeItem(STORAGE_KEY);
-              navigate("/login");
-            }}
-          >
-            Déconnexion
-          </button>
         </div>
       </aside>
 
@@ -174,9 +173,7 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
                   <small>{new Date(notification.createdAt).toLocaleString(dateLocale)}</small>
                 </article>
               ))
-            ) : (
-              <div className="dashboard-notif-empty">{t("studentDashboard.notificationsEmpty")}</div>
-            )}
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -233,6 +230,9 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
               <span>{t("navigation.student.progress")}</span>
               <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
             </div>
+            <button className="mobile-nav-drawer__item" type="button" onClick={handleLogout}>
+              Déconnexion
+            </button>
           </div>
         </>
       ) : null}

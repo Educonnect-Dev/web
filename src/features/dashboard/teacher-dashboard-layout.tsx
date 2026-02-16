@@ -202,9 +202,7 @@ export function TeacherDashboardLayout() {
                   <small>{new Date(notification.createdAt).toLocaleString(dateLocale)}</small>
                 </article>
               ))
-            ) : (
-              <div className="dashboard-notif-empty">{t("teacherDashboard.notificationsEmpty")}</div>
-            )}
+            ) : null}
           </div>
         </div>
       ) : null}
