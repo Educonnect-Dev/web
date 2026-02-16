@@ -29,9 +29,13 @@ export async function apiGet<T>(path: string, headers?: Record<string, string>):
   return apiRequest<T>(path, "GET", undefined, headers);
 }
 
+export async function apiDelete<T>(path: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  return apiRequest<T>(path, "DELETE", undefined, headers);
+}
+
 async function apiRequest<T>(
   path: string,
-  method: "POST" | "GET",
+  method: "POST" | "GET" | "DELETE",
   body?: unknown,
   headers?: Record<string, string>,
   options?: { skipRefresh?: boolean },

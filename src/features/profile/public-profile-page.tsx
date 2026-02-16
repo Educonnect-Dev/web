@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { apiGet, apiPost } from "../../services/api-client";
+import { apiDelete, apiGet, apiPost } from "../../services/api-client";
 import { useLanguage } from "../../shared/hooks/use-language";
 import { useTranslation } from "react-i18next";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
@@ -69,6 +69,7 @@ export function PublicProfilePage() {
   const { id } = useParams();
   const [data, setData] = useState<PublicProfile | null>(null);
   const [subscribeStatus, setSubscribeStatus] = useState<"idle" | "success" | "error">("idle");
+  const [unsubscribeStatus, setUnsubscribeStatus] = useState<"idle" | "success" | "error">("idle");
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const { language } = useLanguage();
@@ -114,9 +115,11 @@ export function PublicProfilePage() {
     if (!id) return;
     if (isSubscribed) {
       setSubscribeStatus("success");
+      setUnsubscribeStatus("idle");
       return;
     }
     setSubscribeStatus("idle");
+    setUnsubscribeStatus("idle");
     const response = await apiPost("/subscriptions", { teacherId: id });
     if (response.error) {
       setSubscribeStatus("error");
@@ -127,6 +130,19 @@ export function PublicProfilePage() {
       ...prev,
       { id: `${id}-${auth?.user.id ?? ""}`, teacherId: id, studentId: auth?.user.id ?? "", status: "active" },
     ]);
+  };
+
+  const handleUnsubscribe = async () => {
+    if (!id || !isSubscribed) return;
+    setSubscribeStatus("idle");
+    setUnsubscribeStatus("idle");
+    const response = await apiDelete(`/subscriptions/${id}`);
+    if (response.error) {
+      setUnsubscribeStatus("error");
+      return;
+    }
+    setUnsubscribeStatus("success");
+    setSubscriptions((prev) => prev.filter((item) => item.teacherId !== id));
   };
 
   const wrapWithLayout = (node: ReactElement) =>
@@ -192,7 +208,9 @@ export function PublicProfilePage() {
           data={data}
           mode={isStudent ? "student" : "preview"}
           onSubscribe={isStudent ? handleSubscribe : undefined}
+          onUnsubscribe={isStudent ? handleUnsubscribe : undefined}
           subscribeStatus={subscribeStatus}
+          unsubscribeStatus={unsubscribeStatus}
           isSubscribed={isSubscribed}
         />
       </div>

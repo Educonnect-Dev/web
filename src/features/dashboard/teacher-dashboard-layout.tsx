@@ -110,6 +110,12 @@ export function TeacherDashboardLayout() {
     setUnreadNotifications(0);
   };
 
+  const handleLogout = async () => {
+    await apiPost("/auth/logout", {});
+    window.localStorage.removeItem(STORAGE_KEY);
+    navigate("/login");
+  };
+
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
@@ -160,19 +166,12 @@ export function TeacherDashboardLayout() {
           <NavLink to="/dashboard/teacher/settings" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
             {t("navigation.teacher.settings")}
           </NavLink>
+          <button className="nav-item" type="button" onClick={handleLogout}>
+            Déconnexion
+          </button>
         </nav>
         <div className="sidebar-footer">
           <span>{auth.user.email}</span>
-          <button
-            className="btn btn-ghost"
-            onClick={async () => {
-              await apiPost("/auth/logout", {});
-              window.localStorage.removeItem(STORAGE_KEY);
-              navigate("/login");
-            }}
-          >
-            Déconnexion
-          </button>
         </div>
       </aside>
 
@@ -268,6 +267,16 @@ export function TeacherDashboardLayout() {
             <NavLink to="/dashboard/teacher/settings" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
               {t("navigation.teacher.settings")}
             </NavLink>
+            <button
+              className="mobile-nav-drawer__item"
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                void handleLogout();
+              }}
+            >
+              Déconnexion
+            </button>
           </div>
         </>
       ) : null}

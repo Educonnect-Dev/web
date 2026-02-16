@@ -48,29 +48,11 @@ type PublicProfileView = {
   offers: Array<{ id: string; title: string; price: number; currency: string; description: string }>;
 };
 
-type Subscriber = {
-  id: string;
-  studentId: string;
-  status: "active" | "canceled";
-};
-
-export function SubscriberCountCard({ count }: { count: number }) {
-  const { t } = useTranslation();
-  return (
-    <div className="dashboard-card">
-      <h3>{t("teacherPages.subscribersTitle")}</h3>
-      <div className="dashboard-value">{count}</div>
-      <p>{t("teacherPages.totalSubscribers")}</p>
-    </div>
-  );
-}
-
 export function TeacherProfilePage() {
   const { auth } = useOutletContext<AuthContext>();
   const { t } = useTranslation();
   const [privateProfile, setPrivateProfile] = useState<Profile | null>(null);
   const [publicProfile, setPublicProfile] = useState<PublicProfileView | null>(null);
-  const [subscriberCount, setSubscriberCount] = useState(0);
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarStatus, setAvatarStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
@@ -103,14 +85,6 @@ export function TeacherProfilePage() {
             isVerified: Boolean(profile.isVerified),
           },
         });
-      }
-    });
-
-    apiGet<Subscriber[]>("/subscriptions").then((response) => {
-      if (response.data) {
-        setSubscriberCount(response.data.length);
-      } else {
-        setSubscriberCount(0);
       }
     });
   }, [auth.user.id]);
@@ -358,6 +332,10 @@ export function TeacherProfilePage() {
         </div>
       </div>
       <div className="dashboard-columns">
+        <div className="dashboard-card dashboard-card--public-preview">
+          <h3>{t("teacherPages.publicProfileTitle")}</h3>
+          {publicProfile ? <TeacherProfileView data={publicProfile} mode="preview" /> : <p>{t("teacherPages.loading")}</p>}
+        </div>
         <div className="dashboard-card">
           <h3>{t("teacherPages.privateProfileTitle")}</h3>
           <div className="avatar-uploader" style={{ marginBottom: 16 }}>
@@ -569,11 +547,6 @@ export function TeacherProfilePage() {
             <p>{t("teacherPages.loading")}</p>
           )}
         </div>
-        <div className="dashboard-card dashboard-card--public-preview">
-          <h3>{t("teacherPages.publicProfileTitle")}</h3>
-          {publicProfile ? <TeacherProfileView data={publicProfile} mode="preview" /> : <p>{t("teacherPages.loading")}</p>}
-        </div>
-        <SubscriberCountCard count={subscriberCount} />
       </div>
     </section>
   );

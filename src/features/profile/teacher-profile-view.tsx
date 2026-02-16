@@ -53,10 +53,13 @@ const translations: Record<Language, Record<string, string>> = {
     verified: "Profil vérifié",
     subscribe: "S'abonner",
     subscribedBadge: "Déjà abonné",
+    subscribedCta: "Abonné",
+    unsubscribe: "Se désabonner",
     accessBlockTitle: "Accès abonné",
     accessBlockDesc: "Vous avez accès aux contenus abonnés de ce prof.",
     subscribed: "Abonnement activé",
     subscribeError: "Impossible de s'abonner",
+    unsubscribeError: "Impossible de se désabonner",
     offers: "Offres",
     contents: "Contenus",
     free: "Gratuit",
@@ -82,10 +85,13 @@ const translations: Record<Language, Record<string, string>> = {
     verified: "ملف موثّق",
     subscribe: "اشترك",
     subscribedBadge: "مشترك بالفعل",
+    subscribedCta: "مشترك",
+    unsubscribe: "إلغاء الاشتراك",
     accessBlockTitle: "وصول المشترك",
     accessBlockDesc: "لديك حق الوصول إلى محتوى الاشتراك.",
     subscribed: "تم الاشتراك",
     subscribeError: "تعذر الاشتراك",
+    unsubscribeError: "تعذر إلغاء الاشتراك",
     offers: "العروض",
     contents: "المحتويات",
     free: "مجاني",
@@ -113,7 +119,9 @@ type TeacherProfileViewProps = {
   data: PublicProfile;
   mode: "student" | "preview";
   onSubscribe?: () => void;
+  onUnsubscribe?: () => void;
   subscribeStatus?: "idle" | "success" | "error";
+  unsubscribeStatus?: "idle" | "success" | "error";
   isSubscribed?: boolean;
 };
 
@@ -121,7 +129,9 @@ export function TeacherProfileView({
   data,
   mode,
   onSubscribe,
+  onUnsubscribe,
   subscribeStatus = "idle",
+  unsubscribeStatus = "idle",
   isSubscribed = false,
 }: TeacherProfileViewProps) {
   const { language } = useLanguage();
@@ -241,14 +251,21 @@ export function TeacherProfileView({
               onClick={onSubscribe}
               disabled={isSubscribed}
             >
-              {copy.subscribe}
+              {isSubscribed ? copy.subscribedCta : copy.subscribe}
             </button>
-            {isSubscribed ? <div className="profile-message">{copy.subscribedBadge}</div> : null}
+            {isSubscribed ? (
+              <button className="btn btn-ghost" type="button" onClick={onUnsubscribe}>
+                {copy.unsubscribe}
+              </button>
+            ) : null}
             {subscribeStatus === "success" ? (
               <div className="profile-message">{copy.subscribed}</div>
             ) : null}
             {subscribeStatus === "error" ? (
               <div className="profile-message profile-message--error">{copy.subscribeError}</div>
+            ) : null}
+            {unsubscribeStatus === "error" ? (
+              <div className="profile-message profile-message--error">{copy.unsubscribeError}</div>
             ) : null}
           </div>
         ) : null}

@@ -469,6 +469,43 @@
   z-index: 1;
 }
 
+.profile-public .profile-card--hero {
+  gap: 12px;
+}
+
+.profile-public .profile-hero {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  text-align: center;
+}
+
+.profile-public .profile-hero__text {
+  padding-inline-start: 0;
+  max-width: 760px;
+}
+
+.profile-public .profile-title {
+  font-size: clamp(30px, 4.2vw, 42px);
+}
+
+.profile-public .profile-name {
+  margin-top: 8px;
+  font-size: clamp(18px, 2.2vw, 24px);
+  font-weight: 700;
+  color: #c7d7f0;
+}
+
+.profile-public .profile-meta,
+.profile-public .profile-actions,
+.profile-public .profile-specialties {
+  justify-content: center;
+}
+
+.profile-public .profile-metrics {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
 .profile-view {
   display: grid;
   gap: 20px;
@@ -662,6 +699,7 @@
 .profile-message {
   font-size: 13px;
   color: #9fe2c2;
+  flex: 0 0 100%;
 }
 
 .profile-message--error {
@@ -2102,12 +2140,15 @@ html[dir="rtl"] .testimonial-track {
 
 .profile-block {
   display: grid;
-  gap: 10px;
+  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
 }
 
 .profile-block label {
   font-size: 12px;
   color: #a8b8d6;
+  margin: 0;
 }
 
 .profile-block input,
@@ -2123,6 +2164,13 @@ html[dir="rtl"] .testimonial-track {
 .profile-block textarea {
   min-height: 88px;
   resize: vertical;
+}
+
+.profile-block textarea,
+.profile-block .auth-actions,
+.profile-block .auth-error,
+.profile-block .auth-success {
+  grid-column: 2;
 }
 
 .settings-grid select {
@@ -2270,6 +2318,17 @@ html[dir="rtl"] .testimonial-track {
   .settings-grid label {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .profile-block {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-block textarea,
+  .profile-block .auth-actions,
+  .profile-block .auth-error,
+  .profile-block .auth-success {
+    grid-column: auto;
   }
 }
 
@@ -2611,6 +2670,16 @@ html[dir="rtl"] .testimonial-track {
   margin-bottom: 20px;
 }
 
+.auth-back-row {
+  margin-bottom: 12px;
+}
+
+.auth-back-btn {
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 10px;
+}
+
 .auth-title {
   font-size: 26px;
   margin: 0;
@@ -2691,6 +2760,40 @@ html[dir="rtl"] .testimonial-track {
 .auth-form textarea:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(243, 139, 30, 0.35);
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-inline-end: 46px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 10px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: rgba(24, 64, 127, 0.35);
+  color: #dbe5f4;
+  cursor: pointer;
+}
+
+.password-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .auth-helper {

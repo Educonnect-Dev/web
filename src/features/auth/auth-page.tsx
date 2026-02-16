@@ -49,6 +49,7 @@ export function AuthPage({
   const [role, setRole] = useState<Role>("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<{ message: string; details?: unknown } | null>(null);
   const [result, setResult] = useState<AuthResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,6 +138,21 @@ export function AuthPage({
   return (
     <div className="auth-shell" dir={isRtl ? "rtl" : "ltr"}>
       <div className="auth-card">
+        <div className="auth-back-row">
+          <button
+            className="btn btn-ghost auth-back-btn"
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/");
+              }
+            }}
+          >
+            {t("auth.back")}
+          </button>
+        </div>
         <div className="auth-header">
           <h1 className="auth-title">{t("auth.title")}</h1>
           <div className="lang-switch">
@@ -198,14 +214,37 @@ export function AuthPage({
           />
 
           <label htmlFor="password">{t("auth.passwordLabel")}</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
+          <div className="password-field">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+            <button
+              className="password-toggle"
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+              title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+            >
+              {showPassword ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3L21 21" />
+                  <path d="M10.58 10.58A2 2 0 0 0 13.42 13.42" />
+                  <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.55 1.55-1.44 2.97-2.6 4.13" />
+                  <path d="M6.61 6.61C4.62 8.04 3.05 9.89 2 12c1.73 4.89 6 8 11 8 2.03 0 3.94-.52 5.61-1.39" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12S6 4 12 4s10 8 10 8-4 8-10 8S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
           <p className="auth-helper">{t("auth.helper")}</p>
 
           {mode === "register" ? (
