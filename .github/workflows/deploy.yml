@@ -23,7 +23,12 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY_B64 }}" | base64 -d > ~/.ssh/id_ed25519_octenium
           chmod 600 ~/.ssh/id_ed25519_octenium
-          ssh-keyscan -p 5804 162.19.98.77 >> ~/.ssh/known_hosts    
+          ssh-keyscan -p 5804 162.19.98.77 >> ~/.ssh/known_hosts
+
+      - name: Debug SSH
+        run: |
+          cat ~/.ssh/id_ed25519_octenium
+          ssh -i ~/.ssh/id_ed25519_octenium -p 5804 -v mbvxsnwh@162.19.98.77 exit    
 
       - name: Deploy
         run: |
