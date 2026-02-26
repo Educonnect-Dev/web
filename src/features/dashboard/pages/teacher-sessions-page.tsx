@@ -2,7 +2,8 @@ import { Fragment, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiGet, apiPost } from "../../../services/api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../../../services/api-client";
+import { studentAnneeOptions, studentNiveauOptions } from "../../profile/profile-options";
 
 type AuthContext = {
   auth: { user: { id: string; role: "student" | "teacher"; email: string } };
@@ -14,6 +15,8 @@ type Session = {
   scheduledAt: string;
   durationMinutes: number;
   placesMax: number;
+  niveau?: string;
+  annee?: string;
   zoomStartUrl?: string;
   status: "ouvert" | "complet" | "annulee" | "terminee";
 };
@@ -32,14 +35,30 @@ type Participant = {
   email?: string;
 };
 
+type SessionEditForm = {
+  id: string;
+  title: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  placesMax: number;
+  niveau: string;
+  annee: string;
+};
+
 export function TeacherSessionsPage() {
   const { auth } = useOutletContext<AuthContext>();
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionQuery, setSessionQuery] = useState("");
+  const [filterNiveau, setFilterNiveau] = useState("");
+  const [filterAnnee, setFilterAnnee] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [title, setTitle] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [placesMax, setPlacesMax] = useState(50);
+  const [niveau, setNiveau] = useState("");
+  const [annee, setAnnee] = useState("");
   const [error, setError] = useState<{ message: string; details?: unknown } | null>(null);
   const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
   const [attendance, setAttendance] = useState<AttendanceEntry[] | null>(null);
@@ -50,10 +69,25 @@ export function TeacherSessionsPage() {
   const [emailSubjectBySession, setEmailSubjectBySession] = useState<Record<string, string>>({});
   const [emailMessageBySession, setEmailMessageBySession] = useState<Record<string, string>>({});
   const [emailStatusBySession, setEmailStatusBySession] = useState<Record<string, string>>({});
+  const [sessionActionStatus, setSessionActionStatus] = useState<string | null>(null);
+  const [sessionEditForm, setSessionEditForm] = useState<SessionEditForm | null>(null);
+  const [sessionEditSaving, setSessionEditSaving] = useState(false);
 
   useEffect(() => {
     refreshSessions();
   }, [auth.user.id, auth.user.role]);
+
+  const niveauOptions = Array.from(new Set(sessions.map((s) => s.niveau).filter(Boolean) as string[])).sort();
+  const anneeOptions = Array.from(new Set(sessions.map((s) => s.annee).filter(Boolean) as string[])).sort();
+  const filteredSessions = sessions.filter((session) => {
+    const matchesQuery = sessionQuery.trim()
+      ? normalizeFilterText(session.title).includes(normalizeFilterText(sessionQuery))
+      : true;
+    const matchesNiveau = filterNiveau ? session.niveau === filterNiveau : true;
+    const matchesAnnee = filterAnnee ? session.annee === filterAnnee : true;
+    const matchesStatus = filterStatus ? session.status === filterStatus : true;
+    return matchesQuery && matchesNiveau && matchesAnnee && matchesStatus;
+  });
 
   const refreshSessions = () => {
     apiGet<Session[]>("/sessions").then((response) => {
@@ -76,6 +110,8 @@ export function TeacherSessionsPage() {
         timezone,
         durationMinutes,
         placesMax,
+        niveau: niveau || undefined,
+        annee: annee || undefined,
       },
     );
 
@@ -88,6 +124,8 @@ export function TeacherSessionsPage() {
     setScheduledAt("");
     setDurationMinutes(60);
     setPlacesMax(50);
+    setNiveau("");
+    setAnnee("");
     refreshSessions();
   };
 
@@ -155,6 +193,56 @@ export function TeacherSessionsPage() {
     }));
   };
 
+  const handleEditSession = (session: Session) => {
+    setError(null);
+    setSessionActionStatus(null);
+    setSessionEditForm({
+      id: session.id,
+      title: session.title,
+      scheduledAt: toDatetimeLocalInputValue(session.scheduledAt),
+      durationMinutes: session.durationMinutes,
+      placesMax: session.placesMax,
+      niveau: session.niveau ?? "",
+      annee: session.annee ?? "",
+    });
+  };
+
+  const submitSessionEdit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!sessionEditForm) return;
+    setSessionEditSaving(true);
+    const response = await apiPatch<Session>(`/sessions/${sessionEditForm.id}`, {
+      title: sessionEditForm.title.trim(),
+      scheduledAt: toLocalIsoWithOffset(sessionEditForm.scheduledAt),
+      durationMinutes: Number(sessionEditForm.durationMinutes),
+      placesMax: Number(sessionEditForm.placesMax),
+      niveau: sessionEditForm.niveau || undefined,
+      annee: sessionEditForm.annee || undefined,
+    });
+    setSessionEditSaving(false);
+    if (response.error) {
+      setError({ message: response.error.message, details: response.error.details });
+      return;
+    }
+    setSessionEditForm(null);
+    setSessionActionStatus("Session mise à jour.");
+    refreshSessions();
+  };
+
+  const handleDeleteSession = async (session: Session) => {
+    setError(null);
+    setSessionActionStatus(null);
+    const confirmed = window.confirm(`Supprimer la session "${session.title}" ?`);
+    if (!confirmed) return;
+    const response = await apiDelete<{ deleted: true }>(`/sessions/${session.id}`);
+    if (response.error) {
+      setError({ message: response.error.message, details: response.error.details });
+      return;
+    }
+    setSessionActionStatus("Session supprimée.");
+    refreshSessions();
+  };
+
   return (
     <section className="dashboard-section">
       <h1>{t("teacherPages.sessionsTitle")}</h1>
@@ -196,6 +284,34 @@ export function TeacherSessionsPage() {
               required
             />
           </label>
+          <label>
+            Niveau
+            <select
+              value={niveau}
+              onChange={(event) => setNiveau(event.target.value)}
+            >
+              <option value="">Sélectionner un niveau</option>
+              {studentNiveauOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Année
+            <select
+              value={annee}
+              onChange={(event) => setAnnee(event.target.value)}
+            >
+              <option value="">Sélectionner une année</option>
+              {studentAnneeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           {error ? (
             <div className="form-error">
               <div>{error.message}</div>
@@ -215,6 +331,49 @@ export function TeacherSessionsPage() {
       </div>
       <div className="dashboard-card">
         <h2>{t("teacherPages.sessionTableTitle")}</h2>
+        {sessionActionStatus ? <div className="form-success">{sessionActionStatus}</div> : null}
+        <div className="content-form" style={{ marginBottom: 12 }}>
+          <label>
+            Recherche
+            <input
+              value={sessionQuery}
+              onChange={(event) => setSessionQuery(event.target.value)}
+              placeholder="Titre de session"
+            />
+          </label>
+          <label>
+            Niveau
+            <select value={filterNiveau} onChange={(event) => setFilterNiveau(event.target.value)}>
+              <option value="">Tous</option>
+              {niveauOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Année
+            <select value={filterAnnee} onChange={(event) => setFilterAnnee(event.target.value)}>
+              <option value="">Toutes</option>
+              {anneeOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Statut
+            <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+              <option value="">Tous</option>
+              <option value="ouvert">Ouvert</option>
+              <option value="complet">Complet</option>
+              <option value="annulee">Annulée</option>
+              <option value="terminee">Terminée</option>
+            </select>
+          </label>
+        </div>
         <table className="dashboard-table dashboard-table--mobile-hide">
           <thead>
             <tr>
@@ -222,15 +381,18 @@ export function TeacherSessionsPage() {
               <th>{t("teacherPages.dateTime")}</th>
               <th>{t("teacherPages.durationMinutes")}</th>
               <th>{t("teacherPages.maxParticipants")}</th>
+              <th>Niveau</th>
+              <th>Année</th>
               <th>{t("teacherPages.start")}</th>
               <th>{t("teacherPages.statusLabel")}</th>
               <th>{t("teacherPages.attendance")}</th>
               <th>{t("teacherPages.participants")}</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {sessions.length ? (
-              sessions.map((session) => (
+            {filteredSessions.length ? (
+              filteredSessions.map((session) => (
                 <Fragment key={session.id}>
                 <tr>
                   {(() => {
@@ -242,11 +404,17 @@ export function TeacherSessionsPage() {
                   <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
                   <td>{session.durationMinutes} min</td>
                   <td>{session.placesMax}</td>
+                  <td>{session.niveau || "-"}</td>
+                  <td>{session.annee || "-"}</td>
                   <td>
                     {canStart ? (
-                      <a href={session.zoomStartUrl} target="_blank" rel="noreferrer">
+                      <button
+                        className="btn btn-ghost"
+                        type="button"
+                        onClick={() => openJitsiMeetingPreferApp(session.zoomStartUrl!)}
+                      >
                         {t("teacherPages.start")}
-                      </a>
+                      </button>
                     ) : (
                       "-"
                     )}
@@ -270,12 +438,22 @@ export function TeacherSessionsPage() {
                       {t("teacherPages.viewParticipants")}
                     </button>
                   </td>
+                  <td>
+                    <div className="row-actions">
+                      <button className="btn btn-ghost" type="button" onClick={() => handleEditSession(session)}>
+                        Modifier
+                      </button>
+                      <button className="btn btn-ghost" type="button" onClick={() => handleDeleteSession(session)}>
+                        Supprimer
+                      </button>
+                    </div>
+                  </td>
                       </>
                     );
                   })()}
                 </tr>
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={11}>
                     <details onToggle={(event) => {
                       if ((event.target as HTMLDetailsElement).open) {
                         loadParticipants(session.id);
@@ -343,14 +521,14 @@ export function TeacherSessionsPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={8}>{t("teacherPages.noSessions")}</td>
+                <td colSpan={11}>Aucune session pour ces filtres.</td>
               </tr>
             )}
           </tbody>
         </table>
         <div className="mobile-cards mobile-cards--spaced">
-          {sessions.length ? (
-            sessions.map((session) => (
+          {filteredSessions.length ? (
+            filteredSessions.map((session) => (
               <article key={session.id} className="mobile-card">
                 {(() => {
                   const timing = getTiming(session);
@@ -375,17 +553,35 @@ export function TeacherSessionsPage() {
                   <span className="mobile-card__label">{t("teacherPages.maxParticipants")}</span>
                   <span>{session.placesMax}</span>
                 </div>
+                <div className="mobile-card__row">
+                  <span className="mobile-card__label">Niveau</span>
+                  <span>{session.niveau || "-"}</span>
+                </div>
+                <div className="mobile-card__row">
+                  <span className="mobile-card__label">Année</span>
+                  <span>{session.annee || "-"}</span>
+                </div>
                 <div className="mobile-card__actions">
                   {canStart ? (
-                    <a className="secondary-button" href={session.zoomStartUrl} target="_blank" rel="noreferrer">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => openJitsiMeetingPreferApp(session.zoomStartUrl!)}
+                    >
                       {t("teacherPages.start")}
-                    </a>
+                    </button>
                   ) : null}
                   {timing.isPast ? (
                     <button className="secondary-button" type="button" onClick={() => handleAttendance(session.id)}>
                       {t("teacherPages.attendance")}
                     </button>
                   ) : null}
+                  <button className="secondary-button" type="button" onClick={() => handleEditSession(session)}>
+                    Modifier
+                  </button>
+                  <button className="secondary-button" type="button" onClick={() => handleDeleteSession(session)}>
+                    Supprimer
+                  </button>
                 </div>
                 <details
                   className="mobile-card__details"
@@ -457,7 +653,7 @@ export function TeacherSessionsPage() {
               </article>
             ))
           ) : (
-            <div className="mobile-card mobile-card--empty">{t("teacherPages.noSessions")}</div>
+            <div className="mobile-card mobile-card--empty">Aucune session pour ces filtres.</div>
           )}
         </div>
         {attendanceSessionId ? (
@@ -491,6 +687,119 @@ export function TeacherSessionsPage() {
           </div>
         ) : null}
       </div>
+      {sessionEditForm ? (
+        <div className="crud-modal" role="dialog" aria-modal="true" aria-label="Modifier la session">
+          <button
+            className="crud-modal__overlay"
+            type="button"
+            onClick={() => (sessionEditSaving ? null : setSessionEditForm(null))}
+            aria-label="Fermer"
+          />
+          <div className="crud-modal__content">
+            <div className="crud-modal__header">
+              <h3>Modifier la session</h3>
+            </div>
+            <form className="content-form" onSubmit={submitSessionEdit}>
+              <label>
+                Titre
+                <input
+                  value={sessionEditForm.title}
+                  onChange={(event) =>
+                    setSessionEditForm((prev) => (prev ? { ...prev, title: event.target.value } : prev))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Date / heure
+                <input
+                  type="datetime-local"
+                  value={sessionEditForm.scheduledAt}
+                  onChange={(event) =>
+                    setSessionEditForm((prev) => (prev ? { ...prev, scheduledAt: event.target.value } : prev))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Durée (minutes)
+                <input
+                  type="number"
+                  min={15}
+                  max={240}
+                  value={sessionEditForm.durationMinutes}
+                  onChange={(event) =>
+                    setSessionEditForm((prev) =>
+                      prev ? { ...prev, durationMinutes: Number(event.target.value) } : prev,
+                    )
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Places max
+                <input
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={sessionEditForm.placesMax}
+                  onChange={(event) =>
+                    setSessionEditForm((prev) =>
+                      prev ? { ...prev, placesMax: Number(event.target.value) } : prev,
+                    )
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Niveau
+                <select
+                  value={sessionEditForm.niveau}
+                  onChange={(event) =>
+                    setSessionEditForm((prev) => (prev ? { ...prev, niveau: event.target.value } : prev))
+                  }
+                >
+                  <option value="">Sélectionner un niveau</option>
+                  {studentNiveauOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Année
+                <select
+                  value={sessionEditForm.annee}
+                  onChange={(event) =>
+                    setSessionEditForm((prev) => (prev ? { ...prev, annee: event.target.value } : prev))
+                  }
+                >
+                  <option value="">Sélectionner une année</option>
+                  {studentAnneeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="crud-modal__actions">
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => setSessionEditForm(null)}
+                  disabled={sessionEditSaving}
+                >
+                  Annuler
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={sessionEditSaving}>
+                  {sessionEditSaving ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -532,4 +841,82 @@ function getLocalTimeZone() {
   } catch {
     return undefined;
   }
+}
+
+function toDatetimeLocalInputValue(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function normalizeFilterText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function openJitsiMeetingPreferApp(meetingUrl: string) {
+  if (typeof window === "undefined") return;
+
+  if (!isMobileOrTabletDevice()) {
+    window.open(meetingUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(meetingUrl);
+  } catch {
+    window.location.assign(meetingUrl);
+    return;
+  }
+
+  const appUrl = `org.jitsi.meet://${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  let fallbackTriggered = false;
+
+  const fallbackToWeb = () => {
+    if (fallbackTriggered) return;
+    fallbackTriggered = true;
+    cleanup();
+    window.location.assign(meetingUrl);
+  };
+
+  const cancelFallback = () => {
+    cleanup();
+  };
+
+  const timer = window.setTimeout(fallbackToWeb, 1400);
+
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      cancelFallback();
+    }
+  };
+
+  const cleanup = () => {
+    window.clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("pagehide", cancelFallback);
+    window.removeEventListener("blur", cancelFallback);
+  };
+
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pagehide", cancelFallback, { once: true });
+  window.addEventListener("blur", cancelFallback, { once: true });
+
+  window.location.assign(appUrl);
+}
+
+function isMobileOrTabletDevice() {
+  if (typeof navigator === "undefined") return false;
+
+  const userAgent = navigator.userAgent || "";
+  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(userAgent);
+  const isIpadDesktopMode =
+    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
+
+  return isMobileUa || isIpadDesktopMode;
 }

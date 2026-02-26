@@ -33,9 +33,17 @@ export async function apiDelete<T>(path: string, headers?: Record<string, string
   return apiRequest<T>(path, "DELETE", undefined, headers);
 }
 
+export async function apiPatch<T>(
+  path: string,
+  body: unknown,
+  headers?: Record<string, string>,
+): Promise<ApiResponse<T>> {
+  return apiRequest<T>(path, "PATCH", body, headers);
+}
+
 async function apiRequest<T>(
   path: string,
-  method: "POST" | "GET" | "DELETE",
+  method: "POST" | "GET" | "DELETE" | "PATCH",
   body?: unknown,
   headers?: Record<string, string>,
   options?: { skipRefresh?: boolean },

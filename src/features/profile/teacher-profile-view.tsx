@@ -18,6 +18,8 @@ type PublicProfile = {
     level?: string;
     isVerified: boolean;
     teachingLevel?: "lycee" | "cem";
+    niveau?: string;
+    annee?: string;
     currentPosition?: string;
     experienceYears?: number;
     city?: string;
@@ -197,6 +199,16 @@ export function TeacherProfileView({
           {data.profile.teachingLevel ? (
             <span className="profile-tag">
               {copy.teachingLevelLabel}: {data.profile.teachingLevel}
+            </span>
+          ) : null}
+          {data.profile.niveau ? (
+            <span className="profile-tag">
+              Niveau: {data.profile.niveau}
+            </span>
+          ) : null}
+          {data.profile.annee ? (
+            <span className="profile-tag">
+              Année: {data.profile.annee}
             </span>
           ) : null}
           {data.profile.currentPosition ? (

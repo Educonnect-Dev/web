@@ -27,6 +27,8 @@ export function CompleteTeacherProfilePage() {
   const [subject, setSubject] = useState(subjectOptions[0]?.value ?? "");
   const [level, setLevel] = useState("");
   const [teachingLevel, setTeachingLevel] = useState<"lycee" | "cem">("lycee");
+  const [niveau, setNiveau] = useState("");
+  const [annee, setAnnee] = useState("");
   const [currentPosition, setCurrentPosition] = useState("");
   const [experienceYears, setExperienceYears] = useState<number | "">("");
   const [city, setCity] = useState("");
@@ -78,6 +80,8 @@ export function CompleteTeacherProfilePage() {
           subject?: string;
           level?: string;
           teachingLevel?: "lycee" | "cem";
+          niveau?: string;
+          annee?: string;
           currentPosition?: string;
           experienceYears?: number;
           city?: string;
@@ -106,6 +110,8 @@ export function CompleteTeacherProfilePage() {
         setSubject(data.subject ?? subjectOptions[0]?.value ?? "");
         setLevel(data.level ?? "");
         setTeachingLevel(data.teachingLevel ?? "lycee");
+        setNiveau(data.niveau ?? "");
+        setAnnee(data.annee ?? "");
         setCurrentPosition(data.currentPosition ?? "");
         setExperienceYears(
           typeof data.experienceYears === "number" ? data.experienceYears : "",
@@ -161,6 +167,8 @@ export function CompleteTeacherProfilePage() {
     subject,
     level: level || undefined,
     teachingLevel,
+    niveau: niveau || undefined,
+    annee: annee || undefined,
     currentPosition: currentPosition || undefined,
     experienceYears: experienceYears === "" ? undefined : Number(experienceYears),
     city: city || undefined,
@@ -414,6 +422,22 @@ export function CompleteTeacherProfilePage() {
               </option>
             ))}
           </select>
+
+          <label htmlFor="niveau">Niveau (ex: lycée, CEM)</label>
+          <input
+            id="niveau"
+            value={niveau}
+            onChange={(event) => setNiveau(event.target.value)}
+            placeholder="Lycée"
+          />
+
+          <label htmlFor="annee">Année (ex: 1ère)</label>
+          <input
+            id="annee"
+            value={annee}
+            onChange={(event) => setAnnee(event.target.value)}
+            placeholder="1ère"
+          />
 
           <label htmlFor="currentPosition">Poste actuel (optionnel)</label>
           <input

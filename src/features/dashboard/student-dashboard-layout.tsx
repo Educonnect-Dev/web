@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -29,6 +29,10 @@ type NotificationItem = {
   createdAt: string;
 };
 
+type StudentProfileTheme = {
+  accentColor?: string;
+};
+
 const STORAGE_KEY = "educonnect_auth";
 
 export function StudentDashboardLayout({ auth, children }: StudentDashboardLayoutProps) {
@@ -38,6 +42,7 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [accentColor, setAccentColor] = useState<string | null>(null);
   const desktopBellRef = useRef<HTMLButtonElement | null>(null);
   const mobileBellRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -60,6 +65,34 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
       window.clearInterval(intervalId);
     };
   }, [auth.user.role]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cachedAccent = window.localStorage.getItem("student_accent_color");
+    if (cachedAccent) setAccentColor(cachedAccent);
+  }, []);
+
+  useEffect(() => {
+    if (auth.user.role !== "student") return;
+    apiGet<StudentProfileTheme>("/student-profiles/me").then((response) => {
+      if (response.data?.accentColor) {
+        setAccentColor(response.data.accentColor);
+        window.localStorage.setItem("student_accent_color", response.data.accentColor);
+      } else {
+        setAccentColor(null);
+        window.localStorage.removeItem("student_accent_color");
+      }
+    });
+  }, [auth.user.role, auth.user.id]);
+
+  useEffect(() => {
+    const onAccentUpdate = (event: Event) => {
+      const next = (event as CustomEvent<{ accentColor?: string }>).detail?.accentColor;
+      if (next) setAccentColor(next);
+    };
+    window.addEventListener("student-accent-updated", onAccentUpdate as EventListener);
+    return () => window.removeEventListener("student-accent-updated", onAccentUpdate as EventListener);
+  }, []);
 
   useEffect(() => {
     if (!isNotificationsOpen) return;
@@ -96,8 +129,12 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
     navigate("/login");
   };
 
+  const studentShellStyle = {
+    ["--student-accent" as string]: accentColor ?? "#f38b1e",
+  } as CSSProperties;
+
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell dashboard-shell--student" style={studentShellStyle}>
       <aside className="dashboard-sidebar">
         <div className="dashboard-logo-row">
           <div className="dashboard-logo">Educonnect</div>
@@ -140,6 +177,9 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
             <span className="nav-item__label">{t("navigation.student.progress")}</span>
             <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
           </div>
+          <NavLink to="/dashboard/student/profile" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+            {t("navigation.student.profile")}
+          </NavLink>
           <button className="nav-item" type="button" onClick={handleLogout}>
             Déconnexion
           </button>
@@ -169,8 +209,8 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
                   className={`dashboard-notif-item${notification.readAt ? "" : " dashboard-notif-item--unread"}`}
                 >
                   <strong>{notification.title}</strong>
-                  <p>{notification.message}</p>
-                  <small>{new Date(notification.createdAt).toLocaleString(dateLocale)}</small>
+                  <p>{formatNotificationTeacherLabel(notification.message)}</p>
+                  <small>{formatNotificationDate(notification.createdAt, dateLocale)}</small>
                 </article>
               ))
             ) : null}
@@ -230,6 +270,9 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
               <span>{t("navigation.student.progress")}</span>
               <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
             </div>
+            <NavLink to="/dashboard/student/profile" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
+              {t("navigation.student.profile")}
+            </NavLink>
             <button className="mobile-nav-drawer__item" type="button" onClick={handleLogout}>
               Déconnexion
             </button>
@@ -238,4 +281,26 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
       ) : null}
     </div>
   );
+}
+
+function formatNotificationTeacherLabel(text: string) {
+  return text
+    .replace(/^(.+?) a publié\b/u, (_, name: string) => `${withProfessorPrefix(name)} a publié`)
+    .replace(/\bavec (.+?) commence bientôt\./u, (_, name: string) => `avec ${withProfessorPrefix(name)} commence bientôt.`);
+}
+
+function withProfessorPrefix(name: string) {
+  const trimmed = name.trim();
+  if (/^(Pr|Prof\.?|Professeur)\b/i.test(trimmed)) return trimmed;
+  return `Pr ${trimmed}`;
+}
+
+function formatNotificationDate(value: string, locale: string) {
+  return new Date(value).toLocaleString(locale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

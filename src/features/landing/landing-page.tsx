@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../shared/hooks/use-language";
 import { apiGet } from "../../services/api-client";
 import logoImage from "../../assets/logo.jpeg";
+import { useSeoMeta } from "../../shared/hooks/use-seo-meta";
 
 type Feature = {
   title: string;
@@ -90,6 +91,15 @@ export function LandingPage() {
     subscriptions: 0,
   });
 
+  useSeoMeta({
+    title: "Educonnect — Cours et contenus avec des profs vérifiés",
+    description:
+      "Educonnect met en relation élèves et profs, avec contenus, sessions live et profils publics vérifiés.",
+    robots: "index,follow",
+    canonicalPath: "/",
+    ogType: "website",
+  });
+
   useEffect(() => {
     if (!statsRef.current) return;
     setStatsVisible(false);
@@ -133,10 +143,14 @@ export function LandingPage() {
     () => (t("landing.testimonials", { returnObjects: true }) as Testimonial[]) ?? [],
     [language, t],
   );
-  const marqueeTestimonials = useMemo(
-    () => (testimonials.length ? [...testimonials, ...testimonials] : []),
-    [testimonials],
-  );
+
+  const scrollToSection = (sectionId: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   useEffect(() => {
     const elements = document.querySelectorAll("[data-reveal]");
     elements.forEach((el) => el.classList.remove("reveal--in"));
@@ -189,9 +203,9 @@ export function LandingPage() {
           <span>Educonnect</span>
         </div>
         <nav className="nav-links">
-          <a href="#features">{t("landing.navFeatures")}</a>
-          <a href="#stats">{t("landing.navStats")}</a>
-          <a href="#testimonials">{t("landing.navTestimonials")}</a>
+          <a href="#features" onClick={scrollToSection("features")}>{t("landing.navFeatures")}</a>
+          <a href="#stats" onClick={scrollToSection("stats")}>{t("landing.navStats")}</a>
+          <a href="#testimonials" onClick={scrollToSection("testimonials")}>{t("landing.navTestimonials")}</a>
         </nav>
         <div className="nav-actions">
           <div className="nav-lang">
@@ -302,16 +316,42 @@ export function LandingPage() {
         </div>
         <div className="testimonial-carousel">
           <div key={`track-${language}`} className={`testimonial-track ${reducedMotion ? "reduced" : ""}`}>
-            {marqueeTestimonials.map((item, index) => (
-              <div key={`${item.name}-${index}`} className="testimonial-card">
-                <div className="avatar pulse" />
-                <blockquote>{item.quote}</blockquote>
-                <div className="author">
-                  <strong>{item.name}</strong>
-                  <span>{item.role}</span>
+            <div className="testimonial-group">
+              {testimonials.map((item, index) => (
+                <div key={`${item.name}-${index}`} className="testimonial-card">
+                  <div className="avatar pulse" />
+                  <blockquote>{item.quote}</blockquote>
+                  <div className="author">
+                    <strong>{item.name}</strong>
+                    <span>{item.role}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="testimonial-group" aria-hidden="true">
+              {testimonials.map((item, index) => (
+                <div key={`clone-${item.name}-${index}`} className="testimonial-card">
+                  <div className="avatar pulse" />
+                  <blockquote>{item.quote}</blockquote>
+                  <div className="author">
+                    <strong>{item.name}</strong>
+                    <span>{item.role}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="testimonial-group" aria-hidden="true">
+              {testimonials.map((item, index) => (
+                <div key={`clone-2-${item.name}-${index}`} className="testimonial-card">
+                  <div className="avatar pulse" />
+                  <blockquote>{item.quote}</blockquote>
+                  <div className="author">
+                    <strong>{item.name}</strong>
+                    <span>{item.role}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

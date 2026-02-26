@@ -21,6 +21,8 @@ type Profile = {
   level?: string;
   isVerified: boolean;
   teachingLevel?: "lycee" | "cem";
+  niveau?: string;
+  annee?: string;
   currentPosition?: string;
   experienceYears?: number;
   city?: string;
@@ -108,6 +110,8 @@ export function TeacherProfilePage() {
     subject: profile.subject,
     level: profile.level || undefined,
     teachingLevel: profile.teachingLevel ?? "lycee",
+    niveau: profile.niveau || undefined,
+    annee: profile.annee || undefined,
     currentPosition: profile.currentPosition || undefined,
     experienceYears: profile.experienceYears,
     city: profile.city || undefined,
@@ -428,6 +432,16 @@ export function TeacherProfilePage() {
                 <option value="lycee">Lycée</option>
                 <option value="cem">CEM</option>
               </select>
+              <label>Niveau (ex: lycée)</label>
+              <input
+                value={privateProfile.niveau ?? ""}
+                onChange={(event) => setPrivateProfile((prev) => (prev ? { ...prev, niveau: event.target.value } : prev))}
+              />
+              <label>Année (ex: 1ère)</label>
+              <input
+                value={privateProfile.annee ?? ""}
+                onChange={(event) => setPrivateProfile((prev) => (prev ? { ...prev, annee: event.target.value } : prev))}
+              />
               <label>Poste</label>
               <input
                 value={privateProfile.currentPosition ?? ""}

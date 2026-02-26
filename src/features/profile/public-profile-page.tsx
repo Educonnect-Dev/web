@@ -7,6 +7,7 @@ import { useLanguage } from "../../shared/hooks/use-language";
 import { useTranslation } from "react-i18next";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
 import { TeacherProfileView } from "./teacher-profile-view";
+import { useSeoMeta } from "../../shared/hooks/use-seo-meta";
 
 type PublicProfile = {
   profile: {
@@ -72,9 +73,26 @@ export function PublicProfilePage() {
   const [unsubscribeStatus, setUnsubscribeStatus] = useState<"idle" | "success" | "error">("idle");
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [blockedTeacherIds, setBlockedTeacherIds] = useState<string[]>([]);
   const { language } = useLanguage();
   const { t } = useTranslation();
   const isRtl = language === "ar";
+  const isAr = language === "ar";
+  const profileName = [data?.profile.firstName, data?.profile.lastName].filter(Boolean).join(" ").trim();
+
+  useSeoMeta({
+    title: data
+      ? `${profileName ? `Professeur ${profileName}` : "Profil professeur"} | Educonnect`
+      : "Profil professeur | Educonnect",
+    description: data
+      ? `${profileName ? `${profileName} · ` : ""}${data.profile.subject} · ${
+          data.profile.teachingLevel === "lycee" ? "Lycée" : data.profile.teachingLevel === "cem" ? "CEM" : "Cours"
+        } sur Educonnect.`
+      : "Découvrez un professeur, ses contenus et ses offres sur Educonnect.",
+    robots: "index,follow",
+    canonicalPath: id ? `/public-profiles/${id}` : "/public-profiles",
+    ogType: "profile",
+  });
 
   const isStudent = auth?.user.role === "student";
   const isSubscribed = useMemo(
@@ -109,7 +127,14 @@ export function PublicProfilePage() {
         setSubscriptions(response.data);
       }
     });
+    apiGet<string[]>("/subscriptions/me/blocked-teachers").then((response) => {
+      if (response.data) {
+        setBlockedTeacherIds(response.data as string[]);
+      }
+    });
   }, [isStudent]);
+
+  const isBlockedByTeacher = Boolean(isStudent && id && blockedTeacherIds.includes(id));
 
   const handleSubscribe = async () => {
     if (!id) return;
@@ -185,6 +210,29 @@ export function PublicProfilePage() {
         </header>
         <div className="profile-content">
           <div className="profile-card profile-card--notice">{t("publicProfile.loading")}</div>
+        </div>
+      </section>
+    );
+  }
+
+  if (isBlockedByTeacher) {
+    return wrapWithLayout(
+      <section className="profile-public" dir={isRtl ? "rtl" : "ltr"}>
+        <div className="profile-bg" aria-hidden="true" />
+        <header className="profile-header">
+          <div>
+            <p className="profile-eyebrow">{t("publicProfile.title")}</p>
+            <h1>{t("publicProfile.title")}</h1>
+            <p className="profile-subtitle">{t("publicProfile.subtitle")}</p>
+          </div>
+          <Link className="profile-back" to="/search/teachers">
+            {t("publicProfile.back")}
+          </Link>
+        </header>
+        <div className="profile-content">
+          <div className="profile-card profile-card--notice">
+            {isAr ? "هذا الملف الشخصي لم يعد متاحًا." : "Ce profil n'est plus accessible."}
+          </div>
         </div>
       </section>
     );

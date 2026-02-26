@@ -1,6 +1,6 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import { AuthPage } from "./features/auth/auth-page";
 import { EmailVerificationPage } from "./features/auth/email-verification-page";
@@ -22,9 +22,13 @@ import { PublicProfilePage } from "./features/profile/public-profile-page";
 import { TeacherSearchPage } from "./features/search/teacher-search-page";
 import { StudentCalendarPage } from "./features/sessions/student-calendar-page";
 import { StudentSessionsPage } from "./features/sessions/student-sessions-page";
+import { StudentProfilePage } from "./features/dashboard/pages/student-profile-page";
+import { AdminSubscriberModerationPage } from "./features/admin/admin-subscriber-moderation-page";
 import { restoreSession } from "./services/auth-persistence";
+import { useSeoMeta } from "./shared/hooks/use-seo-meta";
 
 function App() {
+  const location = useLocation();
   const [isRestoring, setIsRestoring] = useState(true);
   useEffect(() => {
     let isMounted = true;
@@ -47,6 +51,26 @@ function App() {
     };
   }, []);
 
+  const routePath = location.pathname;
+  const isPrivateOrUtilityRoute =
+    routePath.startsWith("/dashboard") ||
+    routePath.startsWith("/onboarding") ||
+    routePath.startsWith("/admin") ||
+    routePath === "/login" ||
+    routePath === "/register" ||
+    routePath === "/verify-email" ||
+    routePath === "/messages" ||
+    routePath === "/calendar" ||
+    routePath === "/feed" ||
+    routePath === "/search/teachers" ||
+    routePath === "/dashboard/student/sessions";
+
+  useSeoMeta({
+    robots: isPrivateOrUtilityRoute ? "noindex,nofollow" : "index,follow",
+    canonicalPath: location.pathname === "/" ? "/" : undefined,
+    ogType: "website",
+  });
+
   if (isRestoring) {
     return (
       <div className="app-boot">
@@ -68,6 +92,7 @@ function App() {
       <Route path="/register" element={<AuthPage initialMode="register" />} />
       <Route path="/verify-email" element={<EmailVerificationPage />} />
       <Route path="/admin/verification" element={<ComingSoonPage />} />
+      <Route path="/admin/subscriber-moderation" element={<AdminSubscriberModerationPage />} />
       <Route path="/onboarding/teacher-profile" element={<CompleteTeacherProfilePage />} />
       <Route path="/onboarding/student-profile" element={<CompleteStudentProfilePage />} />
       <Route path="/calendar" element={<StudentCalendarPage />} />
@@ -76,6 +101,7 @@ function App() {
       <Route path="/search/teachers" element={<TeacherSearchPage />} />
       <Route path="/public-profiles/:id" element={<PublicProfilePage />} />
       <Route path="/dashboard/student" element={<StudentDashboardPage />} />
+      <Route path="/dashboard/student/profile" element={<StudentProfilePage />} />
       <Route path="/dashboard/student/progress" element={<ComingSoonPage />} />
       <Route path="/dashboard/teacher" element={<TeacherDashboardLayout />}>
         <Route index element={<TeacherDashboardOverview />} />

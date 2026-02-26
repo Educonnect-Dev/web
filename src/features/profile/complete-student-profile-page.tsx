@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
 import { useLanguage } from "../../shared/hooks/use-language";
+import { studentAnneeOptions, studentNiveauOptions } from "./profile-options";
 
 type AuthState = {
   user: { id: string; role: "student" | "teacher"; email: string };
@@ -16,6 +17,8 @@ type StudentProfile = {
   lastName?: string;
   lyceeName: string;
   className: string;
+  niveau: string;
+  annee: string;
   updatedAt: string;
 };
 
@@ -30,6 +33,8 @@ export function CompleteStudentProfilePage() {
   const [lastName, setLastName] = useState("");
   const [lyceeName, setLyceeName] = useState("");
   const [className, setClassName] = useState("");
+  const [niveau, setNiveau] = useState("");
+  const [annee, setAnnee] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +59,8 @@ export function CompleteStudentProfilePage() {
         setLastName(response.data.lastName ?? "");
         setLyceeName(response.data.lyceeName ?? "");
         setClassName(response.data.className ?? "");
+        setNiveau(response.data.niveau ?? "");
+        setAnnee(response.data.annee ?? "");
       }
     });
   }, [auth]);
@@ -77,7 +84,7 @@ export function CompleteStudentProfilePage() {
     setError(null);
     const response = await apiPost<StudentProfile>(
       "/student-profiles",
-      { firstName, lastName, lyceeName, className },
+      { firstName, lastName, lyceeName, className, niveau, annee },
     );
     if (response.error) {
       setError("Impossible d'enregistrer le profil.");
@@ -127,6 +134,36 @@ export function CompleteStudentProfilePage() {
             onChange={(event) => setClassName(event.target.value)}
             required
           />
+
+          <label htmlFor="niveau">Niveau</label>
+          <select
+            id="niveau"
+            value={niveau}
+            onChange={(event) => setNiveau(event.target.value)}
+            required
+          >
+            <option value="">Sélectionner un niveau</option>
+            {studentNiveauOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor="annee">Année</label>
+          <select
+            id="annee"
+            value={annee}
+            onChange={(event) => setAnnee(event.target.value)}
+            required
+          >
+            <option value="">Sélectionner une année</option>
+            {studentAnneeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
 
           {error ? <div className="auth-error">{error}</div> : null}
           {status ? <div className="auth-success">{status}</div> : null}

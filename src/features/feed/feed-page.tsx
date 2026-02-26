@@ -15,6 +15,8 @@ type FeedItem = {
   type: "video" | "pdf";
   price: number;
   currency: string;
+  niveau?: string;
+  annee?: string;
   isPaid: boolean;
   fileUrl?: string;
   createdAt: string;
@@ -39,9 +41,17 @@ type AuthState = {
 const STORAGE_KEY = "educonnect_auth";
 
 export function FeedPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
+  const dateLocale = isAr ? "ar-DZ" : "fr-FR";
+  const feedCopy = {
+    free: isAr ? "مجاني" : "Gratuit",
+    level: isAr ? "المستوى" : "Niveau",
+    year: isAr ? "السنة" : "Année",
+  };
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
+  const [blockedTeacherIds, setBlockedTeacherIds] = useState<string[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(1);
   const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -70,6 +80,11 @@ export function FeedPage() {
 
   useEffect(() => {
     if (!auth || auth.user.role !== "student") return;
+    apiGet<string[]>("/subscriptions/me/blocked-teachers").then((response) => {
+      if (response.data) {
+        setBlockedTeacherIds(response.data as string[]);
+      }
+    });
     if (nextPage === 1) {
       loadPage(1);
     }
@@ -104,16 +119,45 @@ export function FeedPage() {
     );
   }
 
+  const visibleItems = items.filter((item) => !blockedTeacherIds.includes(item.teacherId));
+
   return (
     <StudentDashboardLayout auth={auth}>
       <section className="dashboard-section" ref={containerRef}>
         <h1>{t("studentPages.feedTitle")}</h1>
         <div className="dashboard-card">
           <div className="feed-list">
-            {items.length ? (
-              items.map((item) => (
+            {visibleItems.length ? (
+              visibleItems.map((item) => (
                 <article key={item.id} className="content-card feed-card">
+                  <div className="feed-card__top">
+                    <Link className="content-author content-author--link feed-card__author" to={`/public-profiles/${item.teacherId}`}>
+                      <span className="content-author__avatar feed-card__author-avatar">
+                        {item.teacherAvatarUrl ? (
+                          <img src={item.teacherAvatarUrl} alt="" loading="lazy" />
+                        ) : (
+                          (item.teacherName ?? "P").slice(0, 1).toUpperCase()
+                        )}
+                      </span>
+                      <div className="feed-card__author-text">
+                        <strong className="content-author__name">
+                          {item.teacherName
+                            ? formatTeacherDisplayName(item.teacherName, t("common.teacherLabel"))
+                            : t("common.teacherLabel")}
+                        </strong>
+                        <span className="feed-card__date">
+                          {new Date(item.createdAt).toLocaleDateString(dateLocale)}
+                        </span>
+                      </div>
+                    </Link>
+                  </div>
                   <div className="feed-card__media">
+                    <div className="feed-card__media-badges">
+                      <div className="feed-card__type-badge">{item.type.toUpperCase()}</div>
+                      <div className="feed-card__price-badge">
+                        {item.isPaid ? `${item.price} ${item.currency}` : feedCopy.free}
+                      </div>
+                    </div>
                     {item.fileUrl ? (
                       <div className="content-preview">
                       {item.type === "pdf" ? (
@@ -135,34 +179,17 @@ export function FeedPage() {
                     )}
                   </div>
                   <div className="feed-card__body">
-                    <div className="feed-card__eyebrow">{item.type.toUpperCase()}</div>
                     <h3 className="feed-card__title">{item.title}</h3>
-                    <Link className="content-author content-author--link" to={`/public-profiles/${item.teacherId}`}>
-                      <span className="content-author__avatar">
-                        {item.teacherAvatarUrl ? (
-                          <img src={item.teacherAvatarUrl} alt="" loading="lazy" />
-                        ) : (
-                          (item.teacherName ?? "P").slice(0, 1).toUpperCase()
-                        )}
-                      </span>
-                      <strong className="content-author__name">
-                        {item.teacherName
-                          ? formatTeacherDisplayName(item.teacherName, t("common.teacherLabel"))
-                          : t("common.teacherLabel")}
-                      </strong>
-                    </Link>
-                    <div className="feed-card__meta">
-                      <span className="feed-card__price">
-                        {item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}
-                      </span>
-                      <span className="feed-card__date">
-                        {new Date(item.createdAt).toLocaleDateString("fr-FR")}
-                      </span>
-                    </div>
+                    {(item.niveau || item.annee) ? (
+                      <div className="feed-card__meta">
+                        <span>{item.niveau ? `${feedCopy.level}: ${item.niveau}` : feedCopy.level}</span>
+                        <span>{item.annee ? `${feedCopy.year}: ${item.annee}` : "-"}</span>
+                      </div>
+                    ) : null}
                     <div className="feed-card__actions">
                       {item.type === "pdf" && item.fileUrl ? (
                         <a
-                          className="btn btn-ghost"
+                          className="btn btn-primary feed-card__pdf-cta"
                           href={item.fileUrl}
                           target="_blank"
                           rel="noreferrer"
@@ -174,9 +201,16 @@ export function FeedPage() {
                   </div>
                 </article>
               ))
+            ) : isLoading ? (
+              Array.from({ length: 3 }).map((_, index) => <FeedCardSkeleton key={`feed-skeleton-${index}`} />)
             ) : (
               <div className="empty-state">{t("studentPages.noContent")}</div>
             )}
+            {isLoading && visibleItems.length ? (
+              <div className="feed-list__loading-more" aria-hidden="true">
+                <FeedCardSkeleton compact />
+              </div>
+            ) : null}
           </div>
           {nextPage ? (
             <button
@@ -191,5 +225,37 @@ export function FeedPage() {
         </div>
       </section>
     </StudentDashboardLayout>
+  );
+}
+
+function FeedCardSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <article className={`content-card feed-card feed-card--skeleton${compact ? " feed-card--skeleton-compact" : ""}`} aria-hidden="true">
+      <div className="feed-card__top">
+        <div className="feed-card__author">
+          <span className="feed-skeleton feed-skeleton--avatar" />
+          <div className="feed-card__author-text">
+            <span className="feed-skeleton feed-skeleton--line feed-skeleton--line-lg" />
+            <span className="feed-skeleton feed-skeleton--line feed-skeleton--line-sm" />
+          </div>
+        </div>
+      </div>
+      <div className="feed-card__media">
+        <span className="feed-skeleton feed-skeleton--chip feed-skeleton--chip-left" />
+        <span className="feed-skeleton feed-skeleton--chip feed-skeleton--chip-right" />
+        <div className="feed-skeleton feed-skeleton--media" />
+      </div>
+      <div className="feed-card__body">
+        <span className="feed-skeleton feed-skeleton--line feed-skeleton--title" />
+        <span className="feed-skeleton feed-skeleton--line feed-skeleton--title-short" />
+        <div className="feed-card__meta">
+          <span className="feed-skeleton feed-skeleton--pill" />
+          <span className="feed-skeleton feed-skeleton--pill" />
+        </div>
+        <div className="feed-card__actions">
+          <span className="feed-skeleton feed-skeleton--button" />
+        </div>
+      </div>
+    </article>
   );
 }

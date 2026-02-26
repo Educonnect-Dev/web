@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiPost } from "../../services/api-client";
 import { uploadFile } from "../../services/upload-client";
+import { studentAnneeOptions, studentNiveauOptions } from "../profile/profile-options";
 
 type ContentType = "video" | "pdf";
 type Visibility = "free" | "paid";
@@ -11,6 +12,8 @@ type FreeContent = {
   id: string;
   title: string;
   type: "video" | "pdf";
+  niveau?: string;
+  annee?: string;
   fileUrl: string;
   price: number;
   currency: string;
@@ -21,6 +24,8 @@ type PaidContent = {
   id: string;
   title: string;
   type: "video" | "pdf";
+  niveau?: string;
+  annee?: string;
   price: number;
   currency: string;
   isPaid: true;
@@ -36,6 +41,8 @@ export function ContentUploadForm({ onCreated }: ContentUploadFormProps) {
   const [type, setType] = useState<ContentType>("pdf");
   const [visibility, setVisibility] = useState<Visibility>("free");
   const [price, setPrice] = useState<number>(0);
+  const [niveau, setNiveau] = useState("");
+  const [annee, setAnnee] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +88,7 @@ export function ContentUploadForm({ onCreated }: ContentUploadFormProps) {
     if (visibility === "free") {
       const response = await apiPost<FreeContent>(
         "/free-contents",
-        { title, type, filePath, fileBucket, fileUrl },
+        { title, type, niveau: niveau || undefined, annee: annee || undefined, filePath, fileBucket, fileUrl },
       );
       if (response.error) {
         setError(response.error.message);
@@ -91,7 +98,7 @@ export function ContentUploadForm({ onCreated }: ContentUploadFormProps) {
     } else {
       const response = await apiPost<PaidContent>(
         "/contents",
-        { title, type, price: Number(price), filePath, fileBucket, fileUrl },
+        { title, type, price: Number(price), niveau: niveau || undefined, annee: annee || undefined, filePath, fileBucket, fileUrl },
       );
       if (response.error) {
         setError(response.error.message);
@@ -102,6 +109,8 @@ export function ContentUploadForm({ onCreated }: ContentUploadFormProps) {
 
     setTitle("");
     setPrice(0);
+    setNiveau("");
+    setAnnee("");
     setFile(null);
     setSuccess("Contenu publié.");
     setIsUploading(false);
@@ -140,6 +149,28 @@ export function ContentUploadForm({ onCreated }: ContentUploadFormProps) {
           />
         </label>
       ) : null}
+      <label>
+        Niveau
+        <select value={niveau} onChange={(event) => setNiveau(event.target.value)}>
+          <option value="">Sélectionner un niveau</option>
+          {studentNiveauOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Année
+        <select value={annee} onChange={(event) => setAnnee(event.target.value)}>
+          <option value="">Sélectionner une année</option>
+          {studentAnneeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         {t("teacherPages.uploadFile")}
         <input

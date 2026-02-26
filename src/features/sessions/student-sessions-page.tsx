@@ -26,12 +26,20 @@ type Session = {
   durationMinutes: number;
   zoomJoinUrl?: string;
   status: "ouvert" | "complet" | "annulee" | "terminee";
+  teacherName?: string;
+  teacherSubject?: string;
+  niveau?: string;
+  annee?: string;
 };
 
 export function StudentSessionsPage() {
   const { t } = useTranslation();
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [query, setQuery] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [niveauFilter, setNiveauFilter] = useState("");
+  const [anneeFilter, setAnneeFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,10 +67,30 @@ export function StudentSessionsPage() {
   }, [auth]);
 
   const now = Date.now();
+  const subjectOptions = Array.from(
+    new Set(sessions.map((session) => session.teacherSubject).filter(Boolean) as string[]),
+  ).sort();
+  const niveauOptions = Array.from(
+    new Set(sessions.map((session) => session.niveau).filter(Boolean) as string[]),
+  ).sort();
+  const anneeOptions = Array.from(
+    new Set(sessions.map((session) => session.annee).filter(Boolean) as string[]),
+  ).sort();
+  const filteredSessions = sessions.filter((session) => {
+    const matchesQuery = query.trim()
+      ? normalizeSessionSearch([session.title, session.teacherName, session.teacherSubject].filter(Boolean).join(" ")).includes(
+          normalizeSessionSearch(query),
+        )
+      : true;
+    const matchesSubject = subjectFilter ? session.teacherSubject === subjectFilter : true;
+    const matchesNiveau = niveauFilter ? session.niveau === niveauFilter : true;
+    const matchesAnnee = anneeFilter ? session.annee === anneeFilter : true;
+    return matchesQuery && matchesSubject && matchesNiveau && matchesAnnee;
+  });
   const { upcoming, past } = useMemo(() => {
     const upcomingList: Session[] = [];
     const pastList: Session[] = [];
-    sessions.forEach((session) => {
+    filteredSessions.forEach((session) => {
       const start = new Date(session.scheduledAt).getTime();
       if (start >= now) {
         upcomingList.push(session);
@@ -71,7 +99,7 @@ export function StudentSessionsPage() {
       }
     });
     return { upcoming: upcomingList, past: pastList };
-  }, [sessions, now]);
+  }, [filteredSessions, now]);
 
   const getTiming = (session: Session) => {
     const start = new Date(session.scheduledAt).getTime();
@@ -83,14 +111,22 @@ export function StudentSessionsPage() {
   };
 
   const handleJoin = async (sessionId: string) => {
+    const pendingWindow = window.open("", "_blank");
     const response = await apiGet<{ zoomJoinUrl: string }>(`/sessions/${sessionId}/join`);
     if (response.error) {
+      pendingWindow?.close();
       setError(response.error.message);
       return;
     }
     if (response.data?.zoomJoinUrl) {
-      window.open(response.data.zoomJoinUrl, "_blank", "noopener,noreferrer");
+      if (pendingWindow) {
+        pendingWindow.location.href = response.data.zoomJoinUrl;
+      } else {
+        window.location.href = response.data.zoomJoinUrl;
+      }
+      return;
     }
+    pendingWindow?.close();
   };
 
   const handleUnenroll = async (sessionId: string) => {
@@ -123,6 +159,52 @@ export function StudentSessionsPage() {
       <section className="dashboard-section">
         <h1>{t("studentPages.mySessionsTitle")}</h1>
         {error ? <div className="form-error">{error}</div> : null}
+        <div className="dashboard-card">
+          <h2>Filtres</h2>
+          <div className="content-form">
+            <label>
+              Recherche
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Titre / prof / matière"
+              />
+            </label>
+            <label>
+              Matière
+              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+                <option value="">Toutes</option>
+                {subjectOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Niveau
+              <select value={niveauFilter} onChange={(event) => setNiveauFilter(event.target.value)}>
+                <option value="">Tous</option>
+                {niveauOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Année
+              <select value={anneeFilter} onChange={(event) => setAnneeFilter(event.target.value)}>
+                <option value="">Toutes</option>
+                {anneeOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
 
         <div className="dashboard-card">
           <h2>{t("studentPages.upcomingSessions")}</h2>
@@ -136,6 +218,18 @@ export function StudentSessionsPage() {
                     <div>
                       <strong>{session.title}</strong>
                       <p>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</p>
+                      {(session.teacherName || session.teacherSubject) ? (
+                        <p>
+                          {session.teacherName ? `Prof: ${session.teacherName}` : "Prof"}{" "}
+                          {session.teacherSubject ? `• Matière: ${session.teacherSubject}` : ""}
+                        </p>
+                      ) : null}
+                      {(session.niveau || session.annee) ? (
+                        <p>
+                          {session.niveau ? `Niveau: ${session.niveau}` : "Niveau"}{" "}
+                          {session.annee ? `• Année: ${session.annee}` : ""}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="row-actions">
                       {timing.isLive ? (
@@ -177,6 +271,18 @@ export function StudentSessionsPage() {
                   <div>
                     <strong>{session.title}</strong>
                     <p>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</p>
+                    {(session.teacherName || session.teacherSubject) ? (
+                      <p>
+                        {session.teacherName ? `Prof: ${session.teacherName}` : "Prof"}{" "}
+                        {session.teacherSubject ? `• Matière: ${session.teacherSubject}` : ""}
+                      </p>
+                    ) : null}
+                    {(session.niveau || session.annee) ? (
+                      <p>
+                        {session.niveau ? `Niveau: ${session.niveau}` : "Niveau"}{" "}
+                        {session.annee ? `• Année: ${session.annee}` : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <span className="status">{t("studentPages.completed")}</span>
                 </div>
@@ -190,4 +296,12 @@ export function StudentSessionsPage() {
       </section>
     </StudentDashboardLayout>
   );
+}
+
+function normalizeSessionSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }

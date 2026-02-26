@@ -25,6 +25,8 @@ type FeedItem = {
   type: "video" | "pdf";
   price: number;
   currency: string;
+  niveau?: string;
+  annee?: string;
   isPaid: boolean;
   fileUrl?: string;
   createdAt: string;
@@ -87,6 +89,7 @@ export function StudentDashboardPage() {
   const [studentIdentity, setStudentIdentity] = useState<StudentIdentity | null>(null);
   const [summary, setSummary] = useState<StudentDashboardSummary | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
+  const [quickFeedItems, setQuickFeedItems] = useState<FeedItem[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -111,7 +114,7 @@ export function StudentDashboardPage() {
     apiGet<StudentDashboardSummary>("/dashboard/student/summary").then((response) => {
       if (response.data) {
         setSummary(response.data);
-        setItems(response.data.feed.items);
+        setItems(dedupeFeedItems(response.data.feed.items));
         const meta = response.data.feed as FeedMeta;
         setNextPage(meta.nextPage ?? null);
       }
@@ -123,7 +126,7 @@ export function StudentDashboardPage() {
     setIsLoading(true);
     const response = await apiGet<FeedItem[]>(`/feed?page=${page}&limit=5`);
     if (response.data) {
-      setItems((prev) => [...prev, ...(response.data ?? [])]);
+      setItems((prev) => dedupeFeedItems([...prev, ...(response.data ?? [])]));
       const meta = response.meta as FeedMeta;
       setNextPage(meta.nextPage ?? null);
     }
@@ -143,6 +146,14 @@ export function StudentDashboardPage() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, [isLoading, nextPage, auth]);
+
+  useEffect(() => {
+    setQuickFeedItems(shuffleFeedItems(items).slice(0, 3));
+  }, [items]);
+
+  const handleShuffleQuickFeed = () => {
+    setQuickFeedItems(shuffleFeedItems(items).slice(0, 3));
+  };
 
   if (!auth || auth.user.role !== "student") {
     return (
@@ -206,32 +217,49 @@ export function StudentDashboardPage() {
           <h2>{t("studentDashboard.quickFeed")}</h2>
           <div className="dashboard-card">
             <div className="content-grid">
-              {items.length ? (
-                items.map((item) => (
-                  <article key={item.id} className="content-card">
-                    <div className="content-tag">{item.type.toUpperCase()}</div>
-                    <h3>{item.title}</h3>
-                    {item.teacherName ? (
-                      <p className="content-author">
-                        {formatTeacherDisplayName(item.teacherName, t("common.teacherLabel"))}
+              {quickFeedItems.length ? (
+                <>
+                  {quickFeedItems.map((item) => (
+                    <article key={item.id} className="content-card">
+                      <div className="content-tag">{item.type.toUpperCase()}</div>
+                      <h3>{item.title}</h3>
+                      {item.teacherName ? (
+                        <p className="content-author">
+                          {formatTeacherDisplayName(item.teacherName, t("common.teacherLabel"))}
+                        </p>
+                      ) : null}
+                    <p>{item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}</p>
+                    {(item.niveau || item.annee) ? (
+                      <p>
+                        {item.niveau ? `Niveau: ${item.niveau}` : "Niveau"} {item.annee ? `• Année: ${item.annee}` : ""}
                       </p>
                     ) : null}
-                    <p>{item.isPaid ? `${item.price} ${item.currency}` : "Gratuit"}</p>
                     <small>{new Date(item.createdAt).toLocaleDateString("fr-FR")}</small>
+                      <div className="content-actions">
+                        {item.type === "pdf" && item.fileUrl ? (
+                          <a
+                            className="btn btn-ghost"
+                            href={item.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {t("studentPages.viewPdf")}
+                          </a>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                  <article className="content-card content-card--shuffle">
+                    <div className="content-tag">Mix</div>
+                    <h3>Changer les publications</h3>
+                    <p>Affiche 3 autres publications dans ce bloc rapide.</p>
                     <div className="content-actions">
-                      {item.type === "pdf" && item.fileUrl ? (
-                        <a
-                          className="btn btn-ghost"
-                          href={item.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {t("studentPages.viewPdf")}
-                        </a>
-                      ) : null}
+                      <button className="btn btn-primary" type="button" onClick={handleShuffleQuickFeed}>
+                        Shuffle
+                      </button>
                     </div>
                   </article>
-                ))
+                </>
               ) : (
                 <div className="empty-state">{t("studentDashboard.emptyFeed")}</div>
               )}
@@ -265,7 +293,7 @@ export function StudentDashboardPage() {
                   <strong>{t("studentDashboard.nonePlanned")}</strong>
                   <p>{t("studentDashboard.checkTeachers")}</p>
                 </div>
-                <span className="status">{t("studentDashboard.toCome")}</span>
+                <span className="status status-coming">{t("studentDashboard.toCome")}</span>
               </div>
             )}
           </div>
@@ -274,4 +302,24 @@ export function StudentDashboardPage() {
       </div>
     </StudentDashboardLayout>
   );
+}
+
+function shuffleFeedItems(items: FeedItem[]) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function dedupeFeedItems(items: FeedItem[]) {
+  const seen = new Set<string>();
+  const result: FeedItem[] = [];
+  for (const item of items) {
+    if (!item?.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    result.push(item);
+  }
+  return result;
 }

@@ -70,11 +70,12 @@ export function AuthPage({
 
   const redirectAfterAuth = async (payload: AuthResponse) => {
     if (payload.user.role === "student") {
-      const studentProfile = await apiGet<{ id?: string }>(
+      const studentProfile = await apiGet<{ id?: string; niveau?: string; annee?: string }>(
         "/student-profiles/me",
         buildAuthHeaders(payload),
       );
-      if (!studentProfile.data) {
+      const hasStudentLevelData = Boolean(studentProfile.data?.niveau && studentProfile.data?.annee);
+      if (!studentProfile.data || !hasStudentLevelData) {
         navigate("/onboarding/student-profile");
         return;
       }
@@ -142,13 +143,7 @@ export function AuthPage({
           <button
             className="btn btn-ghost auth-back-btn"
             type="button"
-            onClick={() => {
-              if (window.history.length > 1) {
-                navigate(-1);
-              } else {
-                navigate("/");
-              }
-            }}
+            onClick={() => navigate("/", { replace: true })}
           >
             {t("auth.back")}
           </button>

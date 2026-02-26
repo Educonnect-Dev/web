@@ -25,11 +25,16 @@ type Session = {
   scheduledAt: string;
   placesMax: number;
   enrolledStudentIds?: string[];
+  niveau?: string;
+  annee?: string;
   status: "ouvert" | "complet" | "annulee" | "terminee";
 };
 
 export function StudentCalendarPage() {
   const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
+  const dateLocale = isAr ? "ar-DZ" : "fr-FR";
+  const levelYearLabel = isAr ? "المستوى / السنة" : "Niveau / Année";
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [enrolledSessions, setEnrolledSessions] = useState<Set<string>>(new Set());
@@ -116,14 +121,22 @@ export function StudentCalendarPage() {
   };
 
   const handleJoin = async (sessionId: string) => {
+    const pendingWindow = window.open("", "_blank");
     const response = await apiGet<{ zoomJoinUrl: string }>(`/sessions/${sessionId}/join`);
     if (response.error) {
+      pendingWindow?.close();
       setError(response.error.message);
       return;
     }
     if (response.data?.zoomJoinUrl) {
-      window.open(response.data.zoomJoinUrl, "_blank", "noopener,noreferrer");
+      if (pendingWindow) {
+        pendingWindow.location.href = response.data.zoomJoinUrl;
+      } else {
+        window.location.href = response.data.zoomJoinUrl;
+      }
+      return;
     }
+    pendingWindow?.close();
   };
 
   if (!auth || auth.user.role !== "student") {
@@ -152,6 +165,7 @@ export function StudentCalendarPage() {
               <tr>
                 <th>{t("studentPages.tableSession")}</th>
                 <th>{t("studentPages.tableDate")}</th>
+                <th>Niveau / Année</th>
                 <th>{t("studentPages.tableAccess")}</th>
                 <th>{t("studentPages.tableStatus")}</th>
               </tr>
@@ -163,7 +177,8 @@ export function StudentCalendarPage() {
                   return (
                     <tr key={sessionId}>
                       <td>{session.title}</td>
-                      <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
+                      <td>{new Date(session.scheduledAt).toLocaleString(dateLocale)}</td>
+                      <td>{[session.niveau, session.annee].filter(Boolean).join(" • ") || "-"}</td>
                       <td>
                         {enrolledSessions.has(sessionId) ? (
                           <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
@@ -191,7 +206,7 @@ export function StudentCalendarPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4}>{t("studentPages.noTodaySessions")}</td>
+                  <td colSpan={5}>{t("studentPages.noTodaySessions")}</td>
                 </tr>
               )}
             </tbody>
@@ -212,7 +227,11 @@ export function StudentCalendarPage() {
                     </div>
                     <div className="mobile-card__row">
                       <span className="mobile-card__label">{t("studentPages.tableDate")}</span>
-                      <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
+                      <span>{new Date(session.scheduledAt).toLocaleString(dateLocale)}</span>
+                    </div>
+                    <div className="mobile-card__row">
+                      <span className="mobile-card__label">{levelYearLabel}</span>
+                      <span>{[session.niveau, session.annee].filter(Boolean).join(" • ") || "-"}</span>
                     </div>
                     <div className="mobile-card__actions">
                       {enrolledSessions.has(sessionId) ? (
@@ -247,6 +266,7 @@ export function StudentCalendarPage() {
               <tr>
                 <th>{t("studentPages.tableSession")}</th>
                 <th>{t("studentPages.tableDate")}</th>
+                <th>Niveau / Année</th>
                 <th>{t("studentPages.tableAccess")}</th>
                 <th>{t("studentPages.tableStatus")}</th>
               </tr>
@@ -258,7 +278,8 @@ export function StudentCalendarPage() {
                   return (
                     <tr key={sessionId}>
                       <td>{session.title}</td>
-                      <td>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</td>
+                      <td>{new Date(session.scheduledAt).toLocaleString(dateLocale)}</td>
+                      <td>{[session.niveau, session.annee].filter(Boolean).join(" • ") || "-"}</td>
                       <td>
                         {enrolledSessions.has(sessionId) ? (
                           <button className="secondary-button" type="button" onClick={() => handleJoin(sessionId)}>
@@ -286,7 +307,7 @@ export function StudentCalendarPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4}>{t("studentPages.noUpcomingSessions")}</td>
+                  <td colSpan={5}>{t("studentPages.noUpcomingSessions")}</td>
                 </tr>
               )}
             </tbody>
@@ -307,7 +328,11 @@ export function StudentCalendarPage() {
                     </div>
                     <div className="mobile-card__row">
                       <span className="mobile-card__label">{t("studentPages.tableDate")}</span>
-                      <span>{new Date(session.scheduledAt).toLocaleString("fr-FR")}</span>
+                      <span>{new Date(session.scheduledAt).toLocaleString(dateLocale)}</span>
+                    </div>
+                    <div className="mobile-card__row">
+                      <span className="mobile-card__label">{levelYearLabel}</span>
+                      <span>{[session.niveau, session.annee].filter(Boolean).join(" • ") || "-"}</span>
                     </div>
                     <div className="mobile-card__actions">
                       {enrolledSessions.has(sessionId) ? (

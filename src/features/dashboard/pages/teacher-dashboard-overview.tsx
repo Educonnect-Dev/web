@@ -183,8 +183,8 @@ export function TeacherDashboardOverview() {
                   <div key={notification.id} className="dashboard-row">
                     <div>
                       <strong>{notification.title}</strong>
-                      <p>{notification.message}</p>
-                      <p>{new Date(notification.createdAt).toLocaleString("fr-FR")}</p>
+                      <p>{formatNotificationTeacherLabel(notification.message)}</p>
+                      <p>{formatNotificationDate(notification.createdAt, "fr-FR")}</p>
                     </div>
                     <span className={`status ${notification.readAt ? "" : "live"}`}>
                       {t("teacherDashboard.notificationTag")}
@@ -231,4 +231,26 @@ export function TeacherDashboardOverview() {
       ) : null}
     </>
   );
+}
+
+function formatNotificationTeacherLabel(text: string) {
+  return text
+    .replace(/^(.+?) a publié\b/u, (_, name: string) => `${withProfessorPrefix(name)} a publié`)
+    .replace(/\bavec (.+?) commence bientôt\./u, (_, name: string) => `avec ${withProfessorPrefix(name)} commence bientôt.`);
+}
+
+function withProfessorPrefix(name: string) {
+  const trimmed = name.trim();
+  if (/^(Pr|Prof\.?|Professeur)\b/i.test(trimmed)) return trimmed;
+  return `Pr ${trimmed}`;
+}
+
+function formatNotificationDate(value: string, locale: string) {
+  return new Date(value).toLocaleString(locale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

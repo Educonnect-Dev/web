@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
@@ -59,11 +60,17 @@ export function TeacherSearchPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [subject, setSubject] = useState("");
   const [teachingLevel, setTeachingLevel] = useState("");
+  const [keyword, setKeyword] = useState("");
   const [results, setResults] = useState<PublicProfile[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [blockedTeacherIds, setBlockedTeacherIds] = useState<string[]>([]);
   const [statusByTeacher, setStatusByTeacher] = useState<Record<string, "idle" | "success" | "error">>({});
+  const visibleResults = useMemo(
+    () => results.filter((profile) => !blockedTeacherIds.includes(profile.userId)),
+    [results, blockedTeacherIds],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -89,17 +96,27 @@ export function TeacherSearchPage() {
         setSubscriptions(response.data);
       }
     });
+    apiGet<string[]>("/subscriptions/me/blocked-teachers").then((response) => {
+      if (response.data) {
+        setBlockedTeacherIds(response.data as string[]);
+      }
+    });
   }, [auth]);
 
   const handleSearch = async () => {
-    if (!subject || !teachingLevel) {
-      setError(t("search.missing"));
-      return;
-    }
     setError("");
     setIsLoading(true);
-    const params = new URLSearchParams({ subject, teachingLevel });
+    const params = new URLSearchParams();
+    if (subject) params.set("subject", subject);
+    if (teachingLevel) params.set("teachingLevel", teachingLevel);
+    if (keyword.trim()) params.set("q", keyword.trim());
     const response = await apiGet<PublicProfile[]>(`/profiles/search?${params.toString()}`);
+    if (response.error) {
+      setResults([]);
+      setError(response.error.message || t("search.empty"));
+      setIsLoading(false);
+      return;
+    }
     setResults(response.data ?? []);
     setIsLoading(false);
   };
@@ -170,6 +187,14 @@ export function TeacherSearchPage() {
           <p>{t("search.filtersHint")}</p>
         </div>
         <div className="search-filters__fields">
+          <label htmlFor="keywordSearch">{t("search.keywordLabel")}</label>
+          <input
+            id="keywordSearch"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t("search.keywordPlaceholder")}
+          />
+
           <label htmlFor="subjectSearch">{t("search.subjectLabel")}</label>
           <select
             id="subjectSearch"
@@ -209,17 +234,17 @@ export function TeacherSearchPage() {
       <section className="search-results">
         <div className="search-results__header">
           <h2>{t("search.resultsTitle")}</h2>
-          <span className="search-results__count">{results.length}</span>
+          <span className="search-results__count">{visibleResults.length}</span>
         </div>
 
         {isLoading ? <div className="search-helper">{t("search.loading")}</div> : null}
-        {!isLoading && results.length === 0 && !error ? (
+        {!isLoading && visibleResults.length === 0 && !error ? (
           <div className="search-empty">{t("search.empty")}</div>
         ) : null}
 
-        {results.length ? (
+        {visibleResults.length ? (
           <div className="search-results__grid">
-            {results.map((profile) => {
+            {visibleResults.map((profile) => {
               const isTeacherSubscribed = subscriptions.some(
                 (item) => item.teacherId === profile.userId,
               );
@@ -230,6 +255,7 @@ export function TeacherSearchPage() {
               const teacherName = fullName
                 ? formatTeacherDisplayName(fullName, t("common.teacherLabel"))
                 : profile.subject;
+              const teachingLevelLabel = profile.teachingLevel === "lycee" ? "Lycée" : "CEM";
               return (
                 <article key={profile.id} className="teacher-card">
                   <div className="teacher-card__header">
@@ -244,22 +270,23 @@ export function TeacherSearchPage() {
                         )}
                       </span>
                       <div>
-                        <p className="teacher-card__subject">
-                          {teacherName}
-                        </p>
-                        <p className="teacher-card__level">
-                          {subjectLabel} • {profile.teachingLevel === "lycee" ? "Lycée" : "CEM"}
-                        </p>
+                        <p className="teacher-card__subject">{teacherName}</p>
+                        <div className="teacher-card__meta">
+                          <span className="teacher-card__chip teacher-card__chip--subject">{subjectLabel}</span>
+                          <span className="teacher-card__chip">{teachingLevelLabel}</span>
+                        </div>
                       </div>
                     </div>
                     {isTeacherSubscribed ? (
                       <span className="teacher-card__badge">{t("search.subscribedTag")}</span>
                     ) : null}
                   </div>
-                  {profile.bio ? <p className="teacher-card__bio">{profile.bio}</p> : null}
+                  <p className={`teacher-card__bio ${profile.bio ? "" : "teacher-card__bio--muted"}`}>
+                    {profile.bio || "Profil disponible pour abonnement et consultation."}
+                  </p>
                   <div className="teacher-card__actions">
                     <button
-                      className="btn btn-primary"
+                      className={`btn ${isTeacherSubscribed ? "btn-ghost" : "btn-primary"}`}
                       type="button"
                       onClick={() => handleSubscribe(profile.userId)}
                       disabled={isTeacherSubscribed}
@@ -271,7 +298,7 @@ export function TeacherSearchPage() {
                     </Link>
                   </div>
                   {statusByTeacher[profile.userId] === "error" ? (
-                    <span className="search-helper search-helper--error">
+                    <span className="search-helper search-helper--error teacher-card__error">
                       {t("search.subscribeError")}
                     </span>
                   ) : null}
