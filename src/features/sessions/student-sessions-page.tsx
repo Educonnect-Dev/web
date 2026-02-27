@@ -111,22 +111,15 @@ export function StudentSessionsPage() {
   };
 
   const handleJoin = async (sessionId: string) => {
-    const pendingWindow = window.open("", "_blank");
     const response = await apiGet<{ zoomJoinUrl: string }>(`/sessions/${sessionId}/join`);
     if (response.error) {
-      pendingWindow?.close();
       setError(response.error.message);
       return;
     }
     if (response.data?.zoomJoinUrl) {
-      if (pendingWindow) {
-        pendingWindow.location.href = response.data.zoomJoinUrl;
-      } else {
-        window.location.href = response.data.zoomJoinUrl;
-      }
+      openStudentMeetingPreferApp(response.data.zoomJoinUrl);
       return;
     }
-    pendingWindow?.close();
   };
 
   const handleUnenroll = async (sessionId: string) => {
@@ -304,4 +297,107 @@ function normalizeSessionSearch(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function openStudentMeetingPreferApp(meetingUrl: string) {
+  if (typeof window === "undefined") return;
+
+  if (!isMobileOrTabletDevice()) {
+    window.open(meetingUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(meetingUrl);
+  } catch {
+    window.location.assign(meetingUrl);
+    return;
+  }
+
+  const platform = getMobilePlatform();
+  if (platform === "ios") {
+    const shouldOpenApp = window.confirm("Ouvrir dans l'app Jitsi ?");
+    if (!shouldOpenApp) {
+      window.location.assign(meetingUrl);
+      return;
+    }
+    const appUrl = buildIosJitsiSchemeUrl(parsedUrl);
+    openWithFallbackToWeb(appUrl, meetingUrl);
+    return;
+  }
+
+  const appUrl =
+    platform === "android"
+      ? buildAndroidJitsiIntentUrl(parsedUrl, meetingUrl)
+      : meetingUrl;
+  openWithFallbackToWeb(appUrl, meetingUrl);
+}
+
+function buildAndroidJitsiIntentUrl(parsedUrl: URL, fallbackUrl: string) {
+  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  const safeFallbackUrl = encodeURIComponent(fallbackUrl);
+  return `intent://${parsedUrl.host}${path}#Intent;scheme=https;package=org.jitsi.meet;S.browser_fallback_url=${safeFallbackUrl};end`;
+}
+
+function buildIosJitsiSchemeUrl(parsedUrl: URL) {
+  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  return `org.jitsi.meet://${parsedUrl.host}${path}`;
+}
+
+function openWithFallbackToWeb(appUrl: string, fallbackUrl: string) {
+  let fallbackTriggered = false;
+
+  const fallbackToWeb = () => {
+    if (fallbackTriggered) return;
+    fallbackTriggered = true;
+    cleanup();
+    window.location.assign(fallbackUrl);
+  };
+
+  const cancelFallback = () => {
+    cleanup();
+  };
+
+  const timer = window.setTimeout(fallbackToWeb, 1400);
+
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      cancelFallback();
+    }
+  };
+
+  const cleanup = () => {
+    window.clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("pagehide", cancelFallback);
+    window.removeEventListener("blur", cancelFallback);
+  };
+
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pagehide", cancelFallback, { once: true });
+  window.addEventListener("blur", cancelFallback, { once: true });
+  window.location.assign(appUrl);
+}
+
+function isMobileOrTabletDevice() {
+  if (typeof navigator === "undefined") return false;
+
+  const userAgent = navigator.userAgent || "";
+  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(userAgent);
+  const isIpadDesktopMode =
+    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
+
+  return isMobileUa || isIpadDesktopMode;
+}
+
+function getMobilePlatform(): "ios" | "android" | "other" {
+  if (typeof navigator === "undefined") return "other";
+  const userAgent = navigator.userAgent || "";
+  if (/Android/i.test(userAgent)) return "android";
+  const isIosUa = /iPhone|iPad|iPod/i.test(userAgent);
+  const isIpadDesktopMode =
+    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
+  if (isIosUa || isIpadDesktopMode) return "ios";
+  return "other";
 }
