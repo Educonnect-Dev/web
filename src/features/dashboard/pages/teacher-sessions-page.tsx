@@ -987,7 +987,13 @@ function openJitsiMeetingPreferApp(meetingUrl: string) {
 
   const platform = getMobilePlatform();
   if (platform === "ios") {
-    window.location.assign(meetingUrl);
+    const shouldOpenApp = window.confirm("Ouvrir dans l'app Jitsi ?");
+    if (!shouldOpenApp) {
+      window.location.assign(meetingUrl);
+      return;
+    }
+    const appUrl = buildIosJitsiSchemeUrl(parsedUrl);
+    openWithFallbackToWeb(appUrl, meetingUrl);
     return;
   }
 
@@ -1002,6 +1008,11 @@ function buildAndroidJitsiIntentUrl(parsedUrl: URL, fallbackUrl: string) {
   const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
   const safeFallbackUrl = encodeURIComponent(fallbackUrl);
   return `intent://${parsedUrl.host}${path}#Intent;scheme=https;package=org.jitsi.meet;S.browser_fallback_url=${safeFallbackUrl};end`;
+}
+
+function buildIosJitsiSchemeUrl(parsedUrl: URL) {
+  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  return `org.jitsi.meet://${parsedUrl.host}${path}`;
 }
 
 function openWithFallbackToWeb(appUrl: string, fallbackUrl: string) {
