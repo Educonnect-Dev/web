@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { apiGet, apiPost } from "../../services/api-client";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
+import { openJitsiMeetingInBrowserOnly } from "./utils/open-jitsi";
 
 const STORAGE_KEY = "educonnect_auth";
 
@@ -32,6 +33,7 @@ type Session = {
 
 export function StudentCalendarPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const isAr = i18n.language === "ar";
   const dateLocale = isAr ? "ar-DZ" : "fr-FR";
   const levelYearLabel = isAr ? "المستوى / السنة" : "Niveau / Année";
@@ -39,6 +41,8 @@ export function StudentCalendarPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [enrolledSessions, setEnrolledSessions] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [isTodayPanelOpen, setIsTodayPanelOpen] = useState(true);
+  const [isUpcomingPanelOpen, setIsUpcomingPanelOpen] = useState(true);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -127,7 +131,7 @@ export function StudentCalendarPage() {
       return;
     }
     if (response.data?.zoomJoinUrl) {
-      openStudentMeetingPreferApp(response.data.zoomJoinUrl);
+      openJitsiMeetingInBrowserOnly(response.data.zoomJoinUrl);
       return;
     }
   };
@@ -149,10 +153,43 @@ export function StudentCalendarPage() {
   return (
     <StudentDashboardLayout auth={auth}>
       <section className="dashboard-section">
-        <h1>{t("studentPages.calendarTitle")}</h1>
+        <div className="sessions-hub-header">
+          <div>
+            <h1>{t("studentPages.mySessionsTitle")}</h1>
+            <p className="dashboard-muted">{t("studentPages.calendarTitle")}</p>
+          </div>
+          <div className="sessions-tabs" role="tablist" aria-label="Navigation sessions">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              className="sessions-tab is-active"
+              onClick={() => navigate("/calendar")}
+            >
+              {t("studentPages.calendarTitle")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={false}
+              className="sessions-tab"
+              onClick={() => navigate("/dashboard/student/sessions")}
+            >
+              {t("studentPages.mySessionsTitle")}
+            </button>
+          </div>
+        </div>
+        <div className="student-sessions-stack">
         <div className="dashboard-card">
           {error ? <div className="form-error">{error}</div> : null}
-          <h2>{t("studentPages.todaySessions")}</h2>
+          <div className="sessions-panel-header sessions-panel-header--filters">
+            <h2>{t("studentPages.todaySessions")}</h2>
+            <button className="btn btn-ghost" type="button" onClick={() => setIsTodayPanelOpen((prev) => !prev)}>
+              {isTodayPanelOpen ? "Masquer" : "Afficher"}
+            </button>
+          </div>
+          {isTodayPanelOpen ? (
+          <>
           <table className="dashboard-table dashboard-table--mobile-hide">
             <thead>
               <tr>
@@ -250,10 +287,19 @@ export function StudentCalendarPage() {
               <div className="mobile-card mobile-card--empty">{t("studentPages.noTodaySessions")}</div>
             )}
           </div>
+          </>
+          ) : null}
         </div>
 
         <div className="dashboard-card">
-          <h2>{t("studentPages.upcomingSessions")}</h2>
+          <div className="sessions-panel-header sessions-panel-header--filters">
+            <h2>{t("studentPages.upcomingSessions")}</h2>
+            <button className="btn btn-ghost" type="button" onClick={() => setIsUpcomingPanelOpen((prev) => !prev)}>
+              {isUpcomingPanelOpen ? "Masquer" : "Afficher"}
+            </button>
+          </div>
+          {isUpcomingPanelOpen ? (
+          <>
           <table className="dashboard-table dashboard-table--mobile-hide">
             <thead>
               <tr>
@@ -351,111 +397,11 @@ export function StudentCalendarPage() {
               <div className="mobile-card mobile-card--empty">{t("studentPages.noUpcomingSessions")}</div>
             )}
           </div>
+          </>
+          ) : null}
+        </div>
         </div>
       </section>
     </StudentDashboardLayout>
   );
-}
-
-function openStudentMeetingPreferApp(meetingUrl: string) {
-  if (typeof window === "undefined") return;
-
-  if (!isMobileOrTabletDevice()) {
-    window.open(meetingUrl, "_blank", "noopener,noreferrer");
-    return;
-  }
-
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(meetingUrl);
-  } catch {
-    window.location.assign(meetingUrl);
-    return;
-  }
-
-  const platform = getMobilePlatform();
-  if (platform === "ios") {
-    const shouldOpenApp = window.confirm("Ouvrir dans l'app Jitsi ?");
-    if (!shouldOpenApp) {
-      window.location.assign(meetingUrl);
-      return;
-    }
-    const appUrl = buildIosJitsiSchemeUrl(parsedUrl);
-    openWithFallbackToWeb(appUrl, meetingUrl);
-    return;
-  }
-
-  const appUrl =
-    platform === "android"
-      ? buildAndroidJitsiIntentUrl(parsedUrl, meetingUrl)
-      : meetingUrl;
-  openWithFallbackToWeb(appUrl, meetingUrl);
-}
-
-function buildAndroidJitsiIntentUrl(parsedUrl: URL, fallbackUrl: string) {
-  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-  const safeFallbackUrl = encodeURIComponent(fallbackUrl);
-  return `intent://${parsedUrl.host}${path}#Intent;scheme=https;package=org.jitsi.meet;S.browser_fallback_url=${safeFallbackUrl};end`;
-}
-
-function buildIosJitsiSchemeUrl(parsedUrl: URL) {
-  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-  return `org.jitsi.meet://${parsedUrl.host}${path}`;
-}
-
-function openWithFallbackToWeb(appUrl: string, fallbackUrl: string) {
-  let fallbackTriggered = false;
-
-  const fallbackToWeb = () => {
-    if (fallbackTriggered) return;
-    fallbackTriggered = true;
-    cleanup();
-    window.location.assign(fallbackUrl);
-  };
-
-  const cancelFallback = () => {
-    cleanup();
-  };
-
-  const timer = window.setTimeout(fallbackToWeb, 1400);
-
-  const onVisibilityChange = () => {
-    if (document.hidden) {
-      cancelFallback();
-    }
-  };
-
-  const cleanup = () => {
-    window.clearTimeout(timer);
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    window.removeEventListener("pagehide", cancelFallback);
-    window.removeEventListener("blur", cancelFallback);
-  };
-
-  document.addEventListener("visibilitychange", onVisibilityChange);
-  window.addEventListener("pagehide", cancelFallback, { once: true });
-  window.addEventListener("blur", cancelFallback, { once: true });
-  window.location.assign(appUrl);
-}
-
-function isMobileOrTabletDevice() {
-  if (typeof navigator === "undefined") return false;
-
-  const userAgent = navigator.userAgent || "";
-  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(userAgent);
-  const isIpadDesktopMode =
-    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
-
-  return isMobileUa || isIpadDesktopMode;
-}
-
-function getMobilePlatform(): "ios" | "android" | "other" {
-  if (typeof navigator === "undefined") return "other";
-  const userAgent = navigator.userAgent || "";
-  if (/Android/i.test(userAgent)) return "android";
-  const isIosUa = /iPhone|iPad|iPod/i.test(userAgent);
-  const isIpadDesktopMode =
-    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
-  if (isIosUa || isIpadDesktopMode) return "ios";
-  return "other";
 }

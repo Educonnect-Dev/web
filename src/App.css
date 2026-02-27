@@ -1873,11 +1873,12 @@ html[dir="rtl"] .testimonial-track {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.feed-card__media-badges {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
+.feed-card__badges-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .feed-card__eyebrow {
@@ -1949,37 +1950,26 @@ html[dir="rtl"] .testimonial-track {
 }
 
 .feed-card__type-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 2;
+  position: static;
   display: inline-flex;
 }
 
 .feed-card__price-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 2;
+  position: static;
   display: inline-flex;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: none;
 }
 
 .feed-card__type-badge.content-tag,
 .feed-card__price-badge.content-price {
-  pointer-events: none;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  pointer-events: auto;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
-.feed-card__type-badge.content-tag {
-  left: 12px;
-  top: 12px;
-}
-
-.feed-card__price-badge.content-price {
-  right: 12px;
-  top: 12px;
+.feed-card__type-badge.content-tag .content-tag__icon {
+  font-size: 10px;
+  line-height: 1;
 }
 
 .feed-card__actions {
@@ -2168,16 +2158,6 @@ html[dir="rtl"] .testimonial-track {
     flex-direction: column;
     gap: 8px;
     padding: 10px 10px 0;
-  }
-
-  .feed-card__media-badges {
-    position: static;
-    inset: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    pointer-events: auto;
   }
 
   .feed-card__type-badge,
@@ -4582,17 +4562,27 @@ html[dir="rtl"] .testimonial-track {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  margin-bottom: 1rem;
 }
 
 .sessions-tabs {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem;
+  padding: 0.38rem;
   border-radius: 999px;
   border: 1px solid rgba(15, 76, 129, 0.14);
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 8px 18px rgba(15, 76, 129, 0.06);
+}
+
+.student-sessions-stack {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.student-sessions-stack .dashboard-card {
+  margin: 0;
 }
 
 .sessions-tab {
@@ -4809,17 +4799,33 @@ html[dir="rtl"] .testimonial-track {
 @media (max-width: 720px) {
   .sessions-hub-header {
     align-items: stretch;
+    gap: 0.82rem;
   }
 
   .sessions-tabs {
     width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    gap: 0.52rem;
+    padding: 0.4rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sessions-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .sessions-tab {
     text-align: center;
-    padding-inline: 0.6rem;
+    padding-inline: 0.88rem;
+    flex: 1 0 auto;
+    min-width: 140px;
+    min-height: 40px;
+  }
+
+  .student-sessions-stack {
+    gap: 0.95rem;
   }
 
   .sessions-filters-footer {

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../../services/api-client";
 import { studentAnneeOptions, studentNiveauOptions } from "../../profile/profile-options";
+import { openJitsiMeetingPreferApp } from "../../sessions/utils/open-jitsi";
 
 type AuthContext = {
   auth: { user: { id: string; role: "student" | "teacher"; email: string } };
@@ -122,6 +123,24 @@ export function TeacherSessionsPage() {
     const matchesAnnee = filterAnnee ? session.annee === filterAnnee : true;
     const matchesStatus = filterStatus ? session.status === filterStatus : true;
     return matchesQuery && matchesNiveau && matchesAnnee && matchesStatus;
+  });
+  const sortedFilteredSessions = [...filteredSessions].sort((left, right) => {
+    const leftStart = new Date(left.scheduledAt).getTime();
+    const rightStart = new Date(right.scheduledAt).getTime();
+    const now = Date.now();
+
+    const leftIsPast = leftStart < now;
+    const rightIsPast = rightStart < now;
+
+    if (leftIsPast !== rightIsPast) {
+      return leftIsPast ? 1 : -1;
+    }
+
+    if (!leftIsPast && !rightIsPast) {
+      return leftStart - rightStart;
+    }
+
+    return rightStart - leftStart;
   });
 
   const refreshSessions = () => {
@@ -463,8 +482,8 @@ export function TeacherSessionsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredSessions.length ? (
-              filteredSessions.map((session) => (
+            {sortedFilteredSessions.length ? (
+              sortedFilteredSessions.map((session) => (
                 <Fragment key={session.id}>
                 <tr>
                   {(() => {
@@ -591,8 +610,8 @@ export function TeacherSessionsPage() {
         </table>
         </div>
         <div className="mobile-cards mobile-cards--spaced teacher-sessions-mobile-list">
-          {filteredSessions.length ? (
-            filteredSessions.map((session) => (
+          {sortedFilteredSessions.length ? (
+            sortedFilteredSessions.map((session) => (
               <article key={session.id} className="mobile-card">
                 {(() => {
                   const timing = getTiming(session);
@@ -967,107 +986,4 @@ function normalizeFilterText(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
-}
-
-function openJitsiMeetingPreferApp(meetingUrl: string) {
-  if (typeof window === "undefined") return;
-
-  if (!isMobileOrTabletDevice()) {
-    window.open(meetingUrl, "_blank", "noopener,noreferrer");
-    return;
-  }
-
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(meetingUrl);
-  } catch {
-    window.location.assign(meetingUrl);
-    return;
-  }
-
-  const platform = getMobilePlatform();
-  if (platform === "ios") {
-    const shouldOpenApp = window.confirm("Ouvrir dans l'app Jitsi ?");
-    if (!shouldOpenApp) {
-      window.location.assign(meetingUrl);
-      return;
-    }
-    const appUrl = buildIosJitsiSchemeUrl(parsedUrl);
-    openWithFallbackToWeb(appUrl, meetingUrl);
-    return;
-  }
-
-  const appUrl =
-    platform === "android"
-      ? buildAndroidJitsiIntentUrl(parsedUrl, meetingUrl)
-      : meetingUrl;
-  openWithFallbackToWeb(appUrl, meetingUrl);
-}
-
-function buildAndroidJitsiIntentUrl(parsedUrl: URL, fallbackUrl: string) {
-  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-  const safeFallbackUrl = encodeURIComponent(fallbackUrl);
-  return `intent://${parsedUrl.host}${path}#Intent;scheme=https;package=org.jitsi.meet;S.browser_fallback_url=${safeFallbackUrl};end`;
-}
-
-function buildIosJitsiSchemeUrl(parsedUrl: URL) {
-  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-  return `org.jitsi.meet://${parsedUrl.host}${path}`;
-}
-
-function openWithFallbackToWeb(appUrl: string, fallbackUrl: string) {
-  let fallbackTriggered = false;
-
-  const fallbackToWeb = () => {
-    if (fallbackTriggered) return;
-    fallbackTriggered = true;
-    cleanup();
-    window.location.assign(fallbackUrl);
-  };
-
-  const cancelFallback = () => {
-    cleanup();
-  };
-
-  const timer = window.setTimeout(fallbackToWeb, 1400);
-
-  const onVisibilityChange = () => {
-    if (document.hidden) {
-      cancelFallback();
-    }
-  };
-
-  const cleanup = () => {
-    window.clearTimeout(timer);
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    window.removeEventListener("pagehide", cancelFallback);
-    window.removeEventListener("blur", cancelFallback);
-  };
-
-  document.addEventListener("visibilitychange", onVisibilityChange);
-  window.addEventListener("pagehide", cancelFallback, { once: true });
-  window.addEventListener("blur", cancelFallback, { once: true });
-  window.location.assign(appUrl);
-}
-
-function isMobileOrTabletDevice() {
-  if (typeof navigator === "undefined") return false;
-
-  const userAgent = navigator.userAgent || "";
-  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(userAgent);
-  const isIpadDesktopMode =
-    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
-
-  return isMobileUa || isIpadDesktopMode;
-}
-
-function getMobilePlatform(): "ios" | "android" | "other" {
-  if (typeof navigator === "undefined") return "other";
-  const userAgent = navigator.userAgent || "";
-  if (/Android/i.test(userAgent)) return "android";
-  const isIosUa = /iPhone|iPad|iPod/i.test(userAgent);
-  const isIpadDesktopMode =
-    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
-  if (isIosUa || isIpadDesktopMode) return "ios";
-  return "other";
 }

@@ -152,23 +152,17 @@ export function FeedPage() {
                     </Link>
                   </div>
                   <div className="feed-card__media">
-                    <div className="feed-card__media-badges">
-                      <div className="feed-card__type-badge">{item.type.toUpperCase()}</div>
-                      <div className="feed-card__price-badge">
-                        {item.isPaid ? `${item.price} ${item.currency}` : feedCopy.free}
-                      </div>
-                    </div>
                     {item.fileUrl ? (
                       <div className="content-preview">
-                      {item.type === "pdf" ? (
-                        <iframe
-                          title={item.title}
-                          src={`${item.fileUrl}#toolbar=0`}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <video src={item.fileUrl} controls preload="metadata" />
-                      )}
+                        {item.type === "pdf" ? (
+                          <iframe
+                            title={item.title}
+                            src={`${item.fileUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <video src={item.fileUrl} controls preload="metadata" />
+                        )}
                       </div>
                     ) : (
                       <div className={`content-preview content-preview--static content-preview--${item.type}`}>
@@ -179,6 +173,17 @@ export function FeedPage() {
                     )}
                   </div>
                   <div className="feed-card__body">
+                    <div className="feed-card__badges-row">
+                      <div className={`feed-card__type-badge content-tag content-tag--${item.type}`}>
+                        <span className="content-tag__icon" aria-hidden="true">
+                          {item.type === "pdf" ? "📄" : "▶"}
+                        </span>
+                        <span>{item.type.toUpperCase()}</span>
+                      </div>
+                      <div className={`feed-card__price-badge content-price ${item.isPaid ? "content-price--paid" : "content-price--free"}`}>
+                        {item.isPaid ? `${item.price} ${item.currency}` : feedCopy.free}
+                      </div>
+                    </div>
                     <h3 className="feed-card__title">{item.title}</h3>
                     {(item.niveau || item.annee) ? (
                       <div className="feed-card__meta">
