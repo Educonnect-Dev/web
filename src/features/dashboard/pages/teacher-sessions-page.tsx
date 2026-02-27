@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -63,6 +63,8 @@ export function TeacherSessionsPage() {
   const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
   const [attendance, setAttendance] = useState<AttendanceEntry[] | null>(null);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
+  const [attendanceSectionFlash, setAttendanceSectionFlash] = useState(false);
+  const attendanceSectionRef = useRef<HTMLDivElement | null>(null);
   const [participantsBySession, setParticipantsBySession] = useState<Record<string, Participant[]>>({});
   const [participantsLoading, setParticipantsLoading] = useState<Record<string, boolean>>({});
   const [participantsError, setParticipantsError] = useState<Record<string, string>>({});
@@ -72,13 +74,46 @@ export function TeacherSessionsPage() {
   const [sessionActionStatus, setSessionActionStatus] = useState<string | null>(null);
   const [sessionEditForm, setSessionEditForm] = useState<SessionEditForm | null>(null);
   const [sessionEditSaving, setSessionEditSaving] = useState(false);
+  const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(true);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
 
   useEffect(() => {
     refreshSessions();
   }, [auth.user.id, auth.user.role]);
 
+  useEffect(() => {
+    if (!attendanceSessionId) return;
+    setAttendanceSectionFlash(true);
+    const timeoutId = window.setTimeout(() => {
+      setAttendanceSectionFlash(false);
+    }, 1200);
+
+    const rafId = window.requestAnimationFrame(() => {
+      attendanceSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [attendanceSessionId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 900px)");
+    const syncPanels = () => {
+      const shouldCollapse = media.matches;
+      setIsCreatePanelOpen(!shouldCollapse);
+      setIsFilterPanelOpen(!shouldCollapse);
+    };
+    syncPanels();
+    media.addEventListener("change", syncPanels);
+    return () => media.removeEventListener("change", syncPanels);
+  }, []);
+
   const niveauOptions = Array.from(new Set(sessions.map((s) => s.niveau).filter(Boolean) as string[])).sort();
   const anneeOptions = Array.from(new Set(sessions.map((s) => s.annee).filter(Boolean) as string[])).sort();
+  const activeAttendanceSession = attendanceSessionId ? sessions.find((session) => session.id === attendanceSessionId) : null;
   const filteredSessions = sessions.filter((session) => {
     const matchesQuery = sessionQuery.trim()
       ? normalizeFilterText(session.title).includes(normalizeFilterText(sessionQuery))
@@ -143,6 +178,12 @@ export function TeacherSessionsPage() {
   };
 
   const handleAttendance = async (sessionId: string) => {
+    if (attendanceSessionId === sessionId) {
+      setAttendanceSessionId(null);
+      setAttendance(null);
+      setAttendanceError(null);
+      return;
+    }
     setAttendanceSessionId(sessionId);
     setAttendance(null);
     setAttendanceError(null);
@@ -154,6 +195,12 @@ export function TeacherSessionsPage() {
     if (response.data) {
       setAttendance(response.data as AttendanceEntry[]);
     }
+  };
+
+  const closeAttendancePanel = () => {
+    setAttendanceSessionId(null);
+    setAttendance(null);
+    setAttendanceError(null);
   };
 
   const loadParticipants = async (sessionId: string) => {
@@ -247,8 +294,19 @@ export function TeacherSessionsPage() {
     <section className="dashboard-section">
       <h1>{t("teacherPages.sessionsTitle")}</h1>
       <div className="dashboard-card">
-        <h2>{t("teacherPages.scheduleTitle")}</h2>
-        <form className="content-form" onSubmit={handleSubmit}>
+        <div className="sessions-panel-header">
+          <h2>{t("teacherPages.scheduleTitle")}</h2>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => setIsCreatePanelOpen((prev) => !prev)}
+            aria-expanded={isCreatePanelOpen}
+          >
+            {isCreatePanelOpen ? "Masquer" : "Afficher"}
+          </button>
+        </div>
+        {isCreatePanelOpen ? (
+        <form className="content-form sessions-create-form" onSubmit={handleSubmit}>
           <label>
             {t("teacherPages.title")}
             <input value={title} onChange={(event) => setTitle(event.target.value)} required />
@@ -328,52 +386,67 @@ export function TeacherSessionsPage() {
             {t("teacherPages.createSession")}
           </button>
         </form>
+        ) : null}
       </div>
       <div className="dashboard-card">
         <h2>{t("teacherPages.sessionTableTitle")}</h2>
         {sessionActionStatus ? <div className="form-success">{sessionActionStatus}</div> : null}
-        <div className="content-form" style={{ marginBottom: 12 }}>
-          <label>
-            Recherche
-            <input
-              value={sessionQuery}
-              onChange={(event) => setSessionQuery(event.target.value)}
-              placeholder="Titre de session"
-            />
-          </label>
-          <label>
-            Niveau
-            <select value={filterNiveau} onChange={(event) => setFilterNiveau(event.target.value)}>
-              <option value="">Tous</option>
-              {niveauOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Année
-            <select value={filterAnnee} onChange={(event) => setFilterAnnee(event.target.value)}>
-              <option value="">Toutes</option>
-              {anneeOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Statut
-            <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
-              <option value="">Tous</option>
-              <option value="ouvert">Ouvert</option>
-              <option value="complet">Complet</option>
-              <option value="annulee">Annulée</option>
-              <option value="terminee">Terminée</option>
-            </select>
-          </label>
+        <div className="sessions-panel-header sessions-panel-header--filters">
+          <h3>Filtres</h3>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+            aria-expanded={isFilterPanelOpen}
+          >
+            {isFilterPanelOpen ? "Masquer" : "Afficher"}
+          </button>
         </div>
+        {isFilterPanelOpen ? (
+          <div className="content-form sessions-filters-form" style={{ marginBottom: 12 }}>
+            <label>
+              Recherche
+              <input
+                value={sessionQuery}
+                onChange={(event) => setSessionQuery(event.target.value)}
+                placeholder="Titre de session"
+              />
+            </label>
+            <label>
+              Niveau
+              <select value={filterNiveau} onChange={(event) => setFilterNiveau(event.target.value)}>
+                <option value="">Tous</option>
+                {niveauOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Année
+              <select value={filterAnnee} onChange={(event) => setFilterAnnee(event.target.value)}>
+                <option value="">Toutes</option>
+                {anneeOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Statut
+              <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+                <option value="">Tous</option>
+                <option value="ouvert">Ouvert</option>
+                <option value="complet">Complet</option>
+                <option value="annulee">Annulée</option>
+                <option value="terminee">Terminée</option>
+              </select>
+            </label>
+          </div>
+        ) : null}
+        <div className="teacher-sessions-table-wrap">
         <table className="dashboard-table dashboard-table--mobile-hide">
           <thead>
             <tr>
@@ -386,7 +459,6 @@ export function TeacherSessionsPage() {
               <th>{t("teacherPages.start")}</th>
               <th>{t("teacherPages.statusLabel")}</th>
               <th>{t("teacherPages.attendance")}</th>
-              <th>{t("teacherPages.participants")}</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -423,23 +495,14 @@ export function TeacherSessionsPage() {
                   <td>
                     {timing.isPast ? (
                       <button className="btn btn-ghost" type="button" onClick={() => handleAttendance(session.id)}>
-                        {t("teacherPages.attendance")}
+                        {attendanceSessionId === session.id ? "Masquer présence" : t("teacherPages.attendance")}
                       </button>
                     ) : (
                       "-"
                     )}
                   </td>
                   <td>
-                    <button
-                      className="btn btn-ghost"
-                      type="button"
-                      onClick={() => loadParticipants(session.id)}
-                    >
-                      {t("teacherPages.viewParticipants")}
-                    </button>
-                  </td>
-                  <td>
-                    <div className="row-actions">
+                    <div className="row-actions teacher-sessions-actions">
                       <button className="btn btn-ghost" type="button" onClick={() => handleEditSession(session)}>
                         Modifier
                       </button>
@@ -453,7 +516,7 @@ export function TeacherSessionsPage() {
                   })()}
                 </tr>
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={10}>
                     <details onToggle={(event) => {
                       if ((event.target as HTMLDetailsElement).open) {
                         loadParticipants(session.id);
@@ -521,12 +584,13 @@ export function TeacherSessionsPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={11}>Aucune session pour ces filtres.</td>
+                <td colSpan={10}>Aucune session pour ces filtres.</td>
               </tr>
             )}
           </tbody>
         </table>
-        <div className="mobile-cards mobile-cards--spaced">
+        </div>
+        <div className="mobile-cards mobile-cards--spaced teacher-sessions-mobile-list">
           {filteredSessions.length ? (
             filteredSessions.map((session) => (
               <article key={session.id} className="mobile-card">
@@ -573,7 +637,7 @@ export function TeacherSessionsPage() {
                   ) : null}
                   {timing.isPast ? (
                     <button className="secondary-button" type="button" onClick={() => handleAttendance(session.id)}>
-                      {t("teacherPages.attendance")}
+                      {attendanceSessionId === session.id ? "Masquer présence" : t("teacherPages.attendance")}
                     </button>
                   ) : null}
                   <button className="secondary-button" type="button" onClick={() => handleEditSession(session)}>
@@ -612,40 +676,43 @@ export function TeacherSessionsPage() {
                           <div className="empty-state">{t("teacherPages.noParticipants")}</div>
                         )}
                       </div>
-                      <div className="content-form">
-                        <label>
-                          {t("teacherPages.emailSubject")}
-                          <input
-                            value={emailSubjectBySession[session.id] ?? ""}
-                            onChange={(event) =>
-                              setEmailSubjectBySession((prev) => ({
-                                ...prev,
-                                [session.id]: event.target.value,
-                              }))
-                            }
-                          />
-                        </label>
-                        <label>
-                          {t("teacherPages.emailMessage")}
-                          <textarea
-                            value={emailMessageBySession[session.id] ?? ""}
-                            onChange={(event) =>
-                              setEmailMessageBySession((prev) => ({
-                                ...prev,
-                                [session.id]: event.target.value,
-                              }))
-                            }
-                          />
-                        </label>
-                        <button className="btn btn-primary" type="button" onClick={() => handleSendEmail(session.id)}>
-                          {t("teacherPages.emailSend")}
-                        </button>
-                        {emailStatusBySession[session.id] ? (
-                          <div className="form-success">{emailStatusBySession[session.id]}</div>
-                        ) : null}
-                      </div>
                     </>
                   )}
+                </details>
+                <details className="mobile-card__details">
+                  <summary>{t("teacherPages.emailSend")}</summary>
+                  <div className="content-form">
+                    <label>
+                      {t("teacherPages.emailSubject")}
+                      <input
+                        value={emailSubjectBySession[session.id] ?? ""}
+                        onChange={(event) =>
+                          setEmailSubjectBySession((prev) => ({
+                            ...prev,
+                            [session.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      {t("teacherPages.emailMessage")}
+                      <textarea
+                        value={emailMessageBySession[session.id] ?? ""}
+                        onChange={(event) =>
+                          setEmailMessageBySession((prev) => ({
+                            ...prev,
+                            [session.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <button className="btn btn-primary" type="button" onClick={() => handleSendEmail(session.id)}>
+                      {t("teacherPages.emailSend")}
+                    </button>
+                    {emailStatusBySession[session.id] ? (
+                      <div className="form-success">{emailStatusBySession[session.id]}</div>
+                    ) : null}
+                  </div>
                 </details>
                     </>
                   );
@@ -657,30 +724,74 @@ export function TeacherSessionsPage() {
           )}
         </div>
         {attendanceSessionId ? (
-          <div className="dashboard-card">
-            <h3>{t("teacherPages.attendanceTitle")}</h3>
+          <div
+            ref={attendanceSectionRef}
+            className={`dashboard-card teacher-sessions-attendance${attendanceSectionFlash ? " teacher-sessions-attendance--flash" : ""}`}
+          >
+            <div className="sessions-panel-header sessions-panel-header--filters">
+              <h3>{t("teacherPages.attendanceTitle")}</h3>
+              <button className="btn btn-ghost" type="button" onClick={closeAttendancePanel}>
+                Masquer
+              </button>
+            </div>
+            <div className="teacher-sessions-attendance__hint">
+              {attendanceSessionId
+                ? `Liste affichée pour: ${activeAttendanceSession?.title ?? attendanceSessionId}`
+                : ""}
+            </div>
             {attendanceError ? <div className="form-error">{attendanceError}</div> : null}
             {attendance ? (
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>{t("teacherPages.studentName")}</th>
-                    <th>{t("teacherPages.studentEmail")}</th>
-                    <th>{t("teacherPages.present")}</th>
-                    <th>{t("teacherPages.duration")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendance.map((entry) => (
-                    <tr key={`${attendanceSessionId}-${entry.student.id}`}>
-                      <td>{entry.student.nom ?? entry.student.id}</td>
-                      <td>{entry.student.email ?? "-"}</td>
-                      <td>{entry.present ? t("teacherPages.presentYes") : t("teacherPages.presentNo")}</td>
-                      <td>{entry.durationMinutes} min</td>
+              <>
+                <table className="dashboard-table dashboard-table--mobile-hide">
+                  <thead>
+                    <tr>
+                      <th>{t("teacherPages.studentName")}</th>
+                      <th>{t("teacherPages.studentEmail")}</th>
+                      <th>{t("teacherPages.present")}</th>
+                      <th>{t("teacherPages.duration")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {attendance.map((entry) => (
+                      <tr key={`${attendanceSessionId}-${entry.student.id}`}>
+                        <td>{entry.student.nom ?? entry.student.id}</td>
+                        <td>{entry.student.email ?? "-"}</td>
+                        <td>{entry.present ? t("teacherPages.presentYes") : t("teacherPages.presentNo")}</td>
+                        <td>{entry.durationMinutes} min</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="mobile-cards mobile-cards--spaced teacher-sessions-mobile-list">
+                  {attendance.length ? (
+                    attendance.map((entry) => (
+                      <article key={`${attendanceSessionId}-mobile-${entry.student.id}`} className="mobile-card">
+                        <div className="mobile-card__header">
+                          <strong>{entry.student.nom ?? entry.student.id}</strong>
+                          <span className={`status ${entry.present ? "live" : ""}`}>
+                            {entry.present ? t("teacherPages.presentYes") : t("teacherPages.presentNo")}
+                          </span>
+                        </div>
+                        <div className="mobile-card__meta">{entry.student.email ?? "-"}</div>
+                        <div className="mobile-card__row">
+                          <span className="mobile-card__label">{t("teacherPages.duration")}</span>
+                          <span>{entry.durationMinutes} min</span>
+                        </div>
+                        {(entry.joinTime || entry.leaveTime) ? (
+                          <div className="mobile-card__meta">
+                            {entry.joinTime ? `Join: ${new Date(entry.joinTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                            {entry.joinTime && entry.leaveTime ? " • " : ""}
+                            {entry.leaveTime ? `Leave: ${new Date(entry.leaveTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                          </div>
+                        ) : null}
+                      </article>
+                    ))
+                  ) : (
+                    <div className="mobile-card mobile-card--empty">{t("teacherPages.attendanceEmpty")}</div>
+                  )}
+                </div>
+              </>
             ) : (
               <div className="empty-state">{t("teacherPages.attendanceEmpty")}</div>
             )}
@@ -874,14 +985,33 @@ function openJitsiMeetingPreferApp(meetingUrl: string) {
     return;
   }
 
-  const appUrl = `org.jitsi.meet://${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  const platform = getMobilePlatform();
+  if (platform === "ios") {
+    window.location.assign(meetingUrl);
+    return;
+  }
+
+  const appUrl =
+    platform === "android"
+      ? buildAndroidJitsiIntentUrl(parsedUrl, meetingUrl)
+      : meetingUrl;
+  openWithFallbackToWeb(appUrl, meetingUrl);
+}
+
+function buildAndroidJitsiIntentUrl(parsedUrl: URL, fallbackUrl: string) {
+  const path = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  const safeFallbackUrl = encodeURIComponent(fallbackUrl);
+  return `intent://${parsedUrl.host}${path}#Intent;scheme=https;package=org.jitsi.meet;S.browser_fallback_url=${safeFallbackUrl};end`;
+}
+
+function openWithFallbackToWeb(appUrl: string, fallbackUrl: string) {
   let fallbackTriggered = false;
 
   const fallbackToWeb = () => {
     if (fallbackTriggered) return;
     fallbackTriggered = true;
     cleanup();
-    window.location.assign(meetingUrl);
+    window.location.assign(fallbackUrl);
   };
 
   const cancelFallback = () => {
@@ -906,7 +1036,6 @@ function openJitsiMeetingPreferApp(meetingUrl: string) {
   document.addEventListener("visibilitychange", onVisibilityChange);
   window.addEventListener("pagehide", cancelFallback, { once: true });
   window.addEventListener("blur", cancelFallback, { once: true });
-
   window.location.assign(appUrl);
 }
 
@@ -919,4 +1048,15 @@ function isMobileOrTabletDevice() {
     navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
 
   return isMobileUa || isIpadDesktopMode;
+}
+
+function getMobilePlatform(): "ios" | "android" | "other" {
+  if (typeof navigator === "undefined") return "other";
+  const userAgent = navigator.userAgent || "";
+  if (/Android/i.test(userAgent)) return "android";
+  const isIosUa = /iPhone|iPad|iPod/i.test(userAgent);
+  const isIpadDesktopMode =
+    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
+  if (isIosUa || isIpadDesktopMode) return "ios";
+  return "other";
 }

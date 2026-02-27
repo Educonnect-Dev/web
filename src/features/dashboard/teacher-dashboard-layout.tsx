@@ -3,69 +3,25 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet, apiPost } from "../../services/api-client";
-type AuthUser = {
-  id: string;
-  email: string;
-  role: "student" | "teacher";
-};
-
-type AuthState = {
-  user: AuthUser;
-  accessToken: string;
-};
-
-type NotificationItem = {
-  id: string;
-  type: "session_reminder" | "new_content";
-  title: string;
-  message: string;
-  readAt?: string;
-  createdAt: string;
-};
-
-const STORAGE_KEY = "educonnect_auth";
+import { DashboardNotificationsPopover } from "./components/dashboard-notifications-popover";
+import { DASHBOARD_AUTH_STORAGE_KEY, useDashboardAuth } from "./hooks/use-dashboard-auth";
+import { useDashboardNotifications } from "./hooks/use-dashboard-notifications";
 
 export function TeacherDashboardLayout() {
-  const [auth, setAuth] = useState<AuthState | null>(null);
+  const auth = useDashboardAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [teacherAvatarUrl, setTeacherAvatarUrl] = useState<string | null>(null);
+  const [teacherDisplayName, setTeacherDisplayName] = useState("");
   const desktopBellRef = useRef<HTMLButtonElement | null>(null);
   const mobileBellRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      setAuth(JSON.parse(raw) as AuthState);
-    } catch {
-      setAuth(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!auth || auth.user.role !== "teacher") return;
-    let active = true;
-    const loadNotifications = async () => {
-      const response = await apiGet<NotificationItem[]>("/notifications/me?limit=8");
-      if (!active || !response.data) return;
-      setNotifications(response.data);
-      setUnreadNotifications(response.data.filter((item) => !item.readAt).length);
-    };
-    void loadNotifications();
-    const intervalId = window.setInterval(() => {
-      void loadNotifications();
-    }, 60000);
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
-  }, [auth]);
+  const { notifications, unreadNotifications, markAllRead } = useDashboardNotifications({
+    enabled: Boolean(auth && auth.user.role === "teacher"),
+  });
 
   useEffect(() => {
     if (!isNotificationsOpen) return;
@@ -79,6 +35,18 @@ export function TeacherDashboardLayout() {
     document.addEventListener("mousedown", onMouseDown);
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, [isNotificationsOpen]);
+
+  useEffect(() => {
+    if (!auth || auth.user.role !== "teacher") return;
+    apiGet<{ firstName?: string; lastName?: string; avatarUrl?: string }>("/profiles/me").then((response) => {
+      if (!response.data) return;
+      const first = response.data.firstName?.trim() ?? "";
+      const last = response.data.lastName?.trim() ?? "";
+      const fullName = [first, last].filter(Boolean).join(" ").trim();
+      setTeacherDisplayName(fullName);
+      setTeacherAvatarUrl(response.data.avatarUrl ?? null);
+    });
+  }, [auth?.user.id, auth?.user.role]);
 
   if (!auth || auth.user.role !== "teacher") {
     return (
@@ -96,33 +64,39 @@ export function TeacherDashboardLayout() {
 
   const unreadLabel = unreadNotifications > 99 ? "99+" : String(unreadNotifications);
   const dateLocale = i18n.language === "ar" ? "ar-DZ" : "fr-FR";
+  const avatarInitial = (teacherDisplayName || auth.user.email).slice(0, 1).toUpperCase();
 
   const handleBellToggle = () => {
     setIsMobileMenuOpen(false);
     setIsNotificationsOpen((prev) => !prev);
   };
 
-  const handleMarkAllRead = async () => {
-    const response = await apiPost<{ modified: number }>("/notifications/read-all", {});
-    if (!response.data) return;
-    const nowIso = new Date().toISOString();
-    setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? nowIso })));
-    setUnreadNotifications(0);
-  };
-
   const handleLogout = async () => {
     await apiPost("/auth/logout", {});
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(DASHBOARD_AUTH_STORAGE_KEY);
     navigate("/login");
   };
 
   return (
-    <div className="dashboard-shell">
-      <aside className="dashboard-sidebar">
+    <div className="dashboard-shell dashboard-shell--teacher">
+      <aside className={`dashboard-sidebar${isSidebarCollapsed ? " is-collapsed" : ""}`}>
         <div className="dashboard-logo-row">
-          <div className="dashboard-logo">Educonnect</div>
+          {isSidebarCollapsed ? (
+            <img className="dashboard-logo-icon" src="/favicon-96.png" alt="Educonnect" />
+          ) : (
+            <div className="dashboard-logo">Educonnect</div>
+          )}
           <button
-            className="dashboard-bell"
+            className="dashboard-sidebar-toggle"
+            type="button"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            aria-label={isSidebarCollapsed ? "Déplier la barre latérale" : "Rétracter la barre latérale"}
+            title={isSidebarCollapsed ? "Déplier" : "Rétracter"}
+          >
+            {isSidebarCollapsed ? "»" : "«"}
+          </button>
+          <button
+            className={`dashboard-bell${isSidebarCollapsed ? " dashboard-bell--icon-only" : ""}`}
             aria-label={t("navigation.teacher.notifications")}
             type="button"
             onClick={handleBellToggle}
@@ -131,6 +105,17 @@ export function TeacherDashboardLayout() {
             <span aria-hidden="true">🔔</span>
             {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
           </button>
+        </div>
+        <div className="sidebar-profile">
+          <span className="sidebar-profile__avatar" aria-hidden="true">
+            {teacherAvatarUrl ? <img src={teacherAvatarUrl} alt="" /> : avatarInitial}
+          </span>
+          {!isSidebarCollapsed ? (
+            <div className="sidebar-profile__meta">
+              <strong>{teacherDisplayName || "Professeur"}</strong>
+              <span>{auth.user.email}</span>
+            </div>
+          ) : null}
         </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard/teacher" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
@@ -175,35 +160,28 @@ export function TeacherDashboardLayout() {
         </div>
       </aside>
 
+      <div className="mobile-topbar" aria-label="Educonnect">
+        <div className="dashboard-logo">Educonnect</div>
+        <span className="mobile-topbar__avatar" aria-hidden="true">
+          {teacherAvatarUrl ? <img src={teacherAvatarUrl} alt="" /> : avatarInitial}
+        </span>
+      </div>
+
       <main className="dashboard-main">
         <Outlet context={{ auth }} />
       </main>
 
       {isNotificationsOpen ? (
-        <div className="dashboard-notif-popover" ref={panelRef} role="dialog" aria-label={t("navigation.teacher.notifications")}>
-          <div className="dashboard-notif-popover__header">
-            <strong>{t("teacherDashboard.notificationsTitle")}</strong>
-            {unreadNotifications ? (
-              <button className="btn btn-ghost" type="button" onClick={handleMarkAllRead}>
-                {t("teacherDashboard.markAllRead")}
-              </button>
-            ) : null}
-          </div>
-          <div className="dashboard-notif-popover__list">
-            {notifications.length ? (
-              notifications.map((notification) => (
-                <article
-                  key={notification.id}
-                  className={`dashboard-notif-item${notification.readAt ? "" : " dashboard-notif-item--unread"}`}
-                >
-                  <strong>{notification.title}</strong>
-                  <p>{formatNotificationTeacherLabel(notification.message)}</p>
-                  <small>{formatNotificationDate(notification.createdAt, dateLocale)}</small>
-                </article>
-              ))
-            ) : null}
-          </div>
-        </div>
+        <DashboardNotificationsPopover
+          ref={panelRef}
+          ariaLabel={t("navigation.teacher.notifications")}
+          title={t("teacherDashboard.notificationsTitle")}
+          markAllLabel={t("teacherDashboard.markAllRead")}
+          unreadNotifications={unreadNotifications}
+          notifications={notifications}
+          dateLocale={dateLocale}
+          onMarkAllRead={markAllRead}
+        />
       ) : null}
 
       <nav className="mobile-nav" aria-label="Navigation prof">
@@ -282,26 +260,4 @@ export function TeacherDashboardLayout() {
       ) : null}
     </div>
   );
-}
-
-function formatNotificationTeacherLabel(text: string) {
-  return text
-    .replace(/^(.+?) a publié\b/u, (_, name: string) => `${withProfessorPrefix(name)} a publié`)
-    .replace(/\bavec (.+?) commence bientôt\./u, (_, name: string) => `avec ${withProfessorPrefix(name)} commence bientôt.`);
-}
-
-function withProfessorPrefix(name: string) {
-  const trimmed = name.trim();
-  if (/^(Pr|Prof\.?|Professeur)\b/i.test(trimmed)) return trimmed;
-  return `Pr ${trimmed}`;
-}
-
-function formatNotificationDate(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
