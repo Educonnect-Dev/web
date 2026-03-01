@@ -12,7 +12,11 @@ export function openJitsiMeetingPreferApp(meetingUrl: string, options: OpenJitsi
   if (typeof window === "undefined") return;
 
   if (!isMobileOrTabletDevice()) {
-    window.open(meetingUrl, "_blank", "noopener,noreferrer");
+    const popup = window.open(meetingUrl, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      // Some tablet browsers/webviews block popups even on direct click.
+      window.location.assign(meetingUrl);
+    }
     return;
   }
 
