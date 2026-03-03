@@ -2094,6 +2094,8 @@ html[dir="rtl"] .testimonial-track {
   cursor: pointer;
   font: inherit;
   font-size: 13px;
+  min-height: 36px;
+  border-radius: 8px;
 }
 
 .feed-engage-btn__icon {
@@ -2334,6 +2336,24 @@ html[dir="rtl"] .testimonial-track {
 }
 
 @media (max-width: 600px) {
+  .feed-list {
+    max-width: 100%;
+    gap: 14px;
+  }
+
+  .feed-card {
+    border-radius: 16px;
+  }
+
+  .feed-card__top {
+    padding: 12px 12px 10px;
+  }
+
+  .feed-card__body {
+    padding: 12px;
+    gap: 10px;
+  }
+
   .feed-card__media {
     display: flex;
     flex-direction: column;
@@ -2372,6 +2392,46 @@ html[dir="rtl"] .testimonial-track {
   .content-preview iframe,
   .content-preview video {
     height: 220px;
+  }
+
+  .feed-card__engagement {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .feed-engage-btn {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 42px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .feed-comments {
+    gap: 8px;
+    margin-top: 4px;
+    padding-top: 10px;
+  }
+
+  .feed-comment {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 8px;
+  }
+
+  .feed-comment p {
+    font-size: 12px;
+  }
+
+  .feed-comments__composer textarea {
+    font-size: 16px;
+    min-height: 64px;
+  }
+
+  .feed-comments__composer .btn {
+    width: 100%;
+    justify-self: stretch;
   }
 }
 
@@ -2553,6 +2613,7 @@ html[dir="rtl"] .testimonial-track {
   z-index: 80;
   display: grid;
   gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
   backdrop-filter: blur(14px);
 }
 
@@ -2567,7 +2628,8 @@ html[dir="rtl"] .testimonial-track {
   display: grid;
   gap: 8px;
   overflow: auto;
-  max-height: min(58vh, 470px);
+  max-height: none;
+  min-height: 0;
 }
 
 .dashboard-notif-item {
@@ -3196,6 +3258,19 @@ html[dir="rtl"] .testimonial-track {
 
 .dashboard-shell--student .dashboard-card {
   border-color: color-mix(in srgb, var(--student-accent, #f38b1e) 26%, rgba(24, 64, 127, 0.44));
+}
+
+.dashboard-shell--student .sidebar-profile {
+  border-color: color-mix(in srgb, var(--student-accent, #f38b1e) 30%, rgba(24, 64, 127, 0.44));
+  background: color-mix(in srgb, var(--student-accent, #f38b1e) 10%, rgba(255, 255, 255, 0.03));
+}
+
+.dashboard-shell--student .sidebar-profile__avatar {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--student-accent, #f38b1e) 42%, #1d4f8e),
+    color-mix(in srgb, var(--student-accent, #f38b1e) 76%, #ffffff)
+  );
 }
 
 .dashboard-shell--student .mobile-nav {
@@ -4035,8 +4110,13 @@ html[dir="rtl"] .testimonial-track {
     right: 16px;
     width: auto;
     bottom: calc(92px + env(safe-area-inset-bottom, 0px));
-    max-height: min(58vh, 460px);
+    max-height: min(62dvh, 520px);
     z-index: 70;
+  }
+
+  .dashboard-notif-popover__list {
+    max-height: none;
+    min-height: 0;
   }
 
   .mobile-nav-drawer {
@@ -4122,6 +4202,60 @@ html[dir="rtl"] .testimonial-track {
 }
 
 @media (min-width: 901px) {
+  .dashboard-shell--student .dashboard-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    padding-block: 24px;
+  }
+
+  .dashboard-shell--student .dashboard-nav {
+    gap: 8px;
+  }
+
+  .dashboard-shell--student .sidebar-footer {
+    border-top: 1px solid color-mix(in srgb, var(--student-accent, #f38b1e) 24%, rgba(24, 64, 127, 0.32));
+    padding-top: 12px;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed {
+    width: 108px;
+    padding-inline: 14px;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .dashboard-nav,
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .sidebar-footer {
+    display: none;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .sidebar-profile {
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .dashboard-logo {
+    font-size: 15px;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .dashboard-logo-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .dashboard-bell,
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .dashboard-sidebar-toggle {
+    margin: 0;
+  }
+
+  .dashboard-shell--student .dashboard-sidebar.is-collapsed .dashboard-bell__badge {
+    top: -4px;
+    right: -4px;
+  }
+
   .dashboard-shell--teacher .dashboard-sidebar.is-collapsed {
     width: 108px;
     padding-inline: 14px;

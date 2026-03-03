@@ -13,7 +13,7 @@ export type SessionStatus = "ouvert" | "complet" | "annulee" | "terminee";
 
 export type NotificationItem = {
   id: string;
-  type: "session_reminder" | "new_content";
+  type: "session_reminder" | "new_content" | "new_like" | "new_comment" | "new_rating";
   title: string;
   message: string;
   readAt?: string;

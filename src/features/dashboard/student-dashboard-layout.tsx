@@ -24,6 +24,7 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
   const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [accentColor, setAccentColor] = useState<string | null>(null);
   const desktopBellRef = useRef<HTMLButtonElement | null>(null);
   const mobileBellRef = useRef<HTMLButtonElement | null>(null);
@@ -77,6 +78,8 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
   const dateLocale = i18n.language === "ar" ? "ar-DZ" : "fr-FR";
   const isSessionsRoute =
     location.pathname === "/calendar" || location.pathname === "/dashboard/student/sessions";
+  const studentDisplayName = auth.user.email.split("@")[0] || "Eleve";
+  const studentAvatarInitial = studentDisplayName.slice(0, 1).toUpperCase();
 
   const handleBellToggle = () => {
     setIsMobileMenuOpen(false);
@@ -95,11 +98,24 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
 
   return (
     <div className="dashboard-shell dashboard-shell--student" style={studentShellStyle}>
-      <aside className="dashboard-sidebar">
+      <aside className={`dashboard-sidebar${isSidebarCollapsed ? " is-collapsed" : ""}`}>
         <div className="dashboard-logo-row">
-          <div className="dashboard-logo">Educonnect</div>
+          {isSidebarCollapsed ? (
+            <img className="dashboard-logo-icon" src="/favicon-96.png" alt="Educonnect" />
+          ) : (
+            <div className="dashboard-logo">Educonnect</div>
+          )}
           <button
-            className="dashboard-bell"
+            className="dashboard-sidebar-toggle"
+            type="button"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            aria-label={isSidebarCollapsed ? "Déplier la barre latérale" : "Rétracter la barre latérale"}
+            title={isSidebarCollapsed ? "Déplier" : "Rétracter"}
+          >
+            {isSidebarCollapsed ? "»" : "«"}
+          </button>
+          <button
+            className={`dashboard-bell${isSidebarCollapsed ? " dashboard-bell--icon-only" : ""}`}
             aria-label={t("navigation.student.notifications")}
             type="button"
             onClick={handleBellToggle}
@@ -108,6 +124,17 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
             <span aria-hidden="true">🔔</span>
             {unreadNotifications ? <span className="dashboard-bell__badge">{unreadLabel}</span> : null}
           </button>
+        </div>
+        <div className="sidebar-profile">
+          <span className="sidebar-profile__avatar" aria-hidden="true">
+            {studentAvatarInitial}
+          </span>
+          {!isSidebarCollapsed ? (
+            <div className="sidebar-profile__meta">
+              <strong>{studentDisplayName}</strong>
+              <span>{auth.user.email}</span>
+            </div>
+          ) : null}
         </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard/student" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>

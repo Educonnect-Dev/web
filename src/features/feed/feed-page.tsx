@@ -18,6 +18,9 @@ type FeedItem = {
   niveau?: string;
   annee?: string;
   isPaid: boolean;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
   fileUrl?: string;
   createdAt: string;
 };
@@ -59,6 +62,7 @@ export function FeedPage() {
     free: isAr ? "مجاني" : "Gratuit",
     level: isAr ? "المستوى" : "Niveau",
     year: isAr ? "السنة" : "Année",
+    likes: isAr ? "إعجاب" : "J'aime",
     comments: isAr ? "التعليقات" : "Commentaires",
     commentPlaceholder: isAr ? "اكتب تعليقك..." : "Écris un commentaire...",
     publishComment: isAr ? "نشر" : "Publier",
@@ -74,10 +78,16 @@ export function FeedPage() {
   const [commentsLoadingByItem, setCommentsLoadingByItem] = useState<Record<string, boolean>>({});
   const [commentsSubmittingByItem, setCommentsSubmittingByItem] = useState<Record<string, boolean>>({});
   const [commentsOpenByItem, setCommentsOpenByItem] = useState<Record<string, boolean>>({});
-  const [likedByItem, setLikedByItem] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const commentKey = (itemId: string, isPaid: boolean) => `${isPaid ? "paid" : "free"}:${itemId}`;
+  const updateFeedItem = (target: FeedItem, patch: Partial<FeedItem>) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === target.id && item.isPaid === target.isPaid ? { ...item, ...patch } : item,
+      ),
+    );
+  };
 
   const loadComments = async (itemId: string, isPaid: boolean) => {
     const key = commentKey(itemId, isPaid);
@@ -85,7 +95,13 @@ export function FeedPage() {
     setCommentsLoadingByItem((prev) => ({ ...prev, [key]: true }));
     const response = await apiGet<FeedComment[]>(`/feed/${itemId}/comments?isPaid=${isPaid ? "true" : "false"}`);
     if (response.data) {
-      setCommentsByItem((prev) => ({ ...prev, [key]: response.data ?? [] }));
+      const nextComments = response.data ?? [];
+      setCommentsByItem((prev) => ({ ...prev, [key]: nextComments }));
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId && item.isPaid === isPaid ? { ...item, commentCount: nextComments.length } : item,
+        ),
+      );
     }
     setCommentsLoadingByItem((prev) => ({ ...prev, [key]: false }));
   };
@@ -116,6 +132,13 @@ export function FeedPage() {
         ...prev,
         [key]: [...(prev[key] ?? []), response.data as FeedComment],
       }));
+      setItems((prev) =>
+        prev.map((candidate) =>
+          candidate.id === item.id && candidate.isPaid === item.isPaid
+            ? { ...candidate, commentCount: candidate.commentCount + 1 }
+            : candidate,
+        ),
+      );
       setCommentInputByItem((prev) => ({ ...prev, [key]: "" }));
     }
     setCommentsSubmittingByItem((prev) => ({ ...prev, [key]: false }));
@@ -130,9 +153,18 @@ export function FeedPage() {
     }
   };
 
-  const toggleLike = (item: FeedItem) => {
-    const key = commentKey(item.id, item.isPaid);
-    setLikedByItem((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleLike = async (item: FeedItem) => {
+    const response = await apiPost<{
+      contentId: string;
+      isPaid: boolean;
+      likedByMe: boolean;
+      likeCount: number;
+    }>(`/feed/${item.id}/likes`, { isPaid: item.isPaid });
+    if (!response.data) return;
+    updateFeedItem(item, {
+      likedByMe: response.data.likedByMe,
+      likeCount: response.data.likeCount,
+    });
   };
 
   useEffect(() => {
@@ -273,13 +305,15 @@ export function FeedPage() {
                     </div>
                     <div className="feed-card__engagement">
                       <button
-                        className={`feed-engage-btn ${likedByItem[commentKey(item.id, item.isPaid)] ? "is-liked" : ""}`}
+                        className={`feed-engage-btn ${item.likedByMe ? "is-liked" : ""}`}
                         type="button"
                         aria-label="Aimer"
-                        onClick={() => toggleLike(item)}
+                        onClick={() => {
+                          void toggleLike(item);
+                        }}
                       >
                         <span className="feed-engage-btn__icon" aria-hidden="true">♥</span>
-                        <span>J'aime</span>
+                        <span>{feedCopy.likes} ({item.likeCount})</span>
                       </button>
                       <button
                         className={`feed-engage-btn ${commentsOpenByItem[commentKey(item.id, item.isPaid)] ? "is-active" : ""}`}
@@ -288,7 +322,7 @@ export function FeedPage() {
                         onClick={() => toggleComments(item)}
                       >
                         <span className="feed-engage-btn__icon" aria-hidden="true">💬</span>
-                        <span>{feedCopy.comments}</span>
+                        <span>{feedCopy.comments} ({item.commentCount})</span>
                       </button>
                     </div>
                     {commentsOpenByItem[commentKey(item.id, item.isPaid)] ? (
