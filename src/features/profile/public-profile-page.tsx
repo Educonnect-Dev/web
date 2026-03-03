@@ -39,6 +39,9 @@ type PublicProfile = {
     coverImageUrl?: string;
     accentColor?: string;
     avatarUrl?: string;
+    ratingAverage: number;
+    ratingCount: number;
+    myRating?: number;
   };
   contents: Array<{
     id: string;
@@ -64,6 +67,12 @@ type Subscription = {
   status: "active" | "canceled";
 };
 
+type RatingResponse = {
+  rating?: number;
+  ratingAverage: number;
+  ratingCount: number;
+};
+
 const STORAGE_KEY = "educonnect_auth";
 
 export function PublicProfilePage() {
@@ -74,6 +83,7 @@ export function PublicProfilePage() {
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [blockedTeacherIds, setBlockedTeacherIds] = useState<string[]>([]);
+  const [ratingStatus, setRatingStatus] = useState<"idle" | "success" | "error">("idle");
   const { language } = useLanguage();
   const { t } = useTranslation();
   const isRtl = language === "ar";
@@ -170,6 +180,57 @@ export function PublicProfilePage() {
     setSubscriptions((prev) => prev.filter((item) => item.teacherId !== id));
   };
 
+  const handleRateTeacher = async (rating: number) => {
+    if (!id || !isStudent) return;
+    setRatingStatus("idle");
+    const response = await apiPost<{
+      teacherId: string;
+      studentId: string;
+      rating: number;
+      ratingAverage: number;
+      ratingCount: number;
+    }>(`/public-profiles/${id}/rating`, { rating });
+    if (response.error || !response.data) {
+      setRatingStatus("error");
+      return;
+    }
+    const ratingData = response.data;
+    setRatingStatus("success");
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              myRating: ratingData.rating,
+              ratingAverage: ratingData.ratingAverage,
+              ratingCount: ratingData.ratingCount,
+            },
+          }
+        : prev,
+    );
+  };
+
+  useEffect(() => {
+    if (!id || !isStudent) return;
+    apiGet<RatingResponse>(`/public-profiles/${id}/rating/me`).then((response) => {
+      if (!response.data) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              profile: {
+                ...prev.profile,
+                myRating: response.data?.rating,
+                ratingAverage: response.data?.ratingAverage ?? prev.profile.ratingAverage,
+                ratingCount: response.data?.ratingCount ?? prev.profile.ratingCount,
+              },
+            }
+          : prev,
+      );
+    });
+  }, [id, isStudent]);
+
   const wrapWithLayout = (node: ReactElement) =>
     isStudent && auth ? <StudentDashboardLayout auth={auth}>{node}</StudentDashboardLayout> : node;
 
@@ -260,6 +321,8 @@ export function PublicProfilePage() {
           subscribeStatus={subscribeStatus}
           unsubscribeStatus={unsubscribeStatus}
           isSubscribed={isSubscribed}
+          onRate={isStudent ? handleRateTeacher : undefined}
+          ratingStatus={ratingStatus}
         />
       </div>
     </section>

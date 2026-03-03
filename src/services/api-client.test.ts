@@ -103,7 +103,7 @@ describe("api-client refresh flow", () => {
         ok: true,
         status: 200,
         json: async () => ({
-          data: { accessToken: "new-token", refreshToken: "refresh" },
+          data: { accessToken: "new-token" },
           error: null,
           meta: {},
         }),

@@ -122,6 +122,9 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
           >
             {t("navigation.student.sessions")}
           </NavLink>
+          <NavLink to="/dashboard/student/eqcm" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+            {t("navigation.student.eqcm")}
+          </NavLink>
           <div className="nav-item disabled">
             <span className="nav-item__label">{t("navigation.student.messages")}</span>
             <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
@@ -210,6 +213,9 @@ export function StudentDashboardLayout({ auth, children }: StudentDashboardLayou
               <span>{t("navigation.student.subscriptions")}</span>
               <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>
             </div>
+            <NavLink to="/dashboard/student/eqcm" className="mobile-nav-drawer__item" onClick={() => setIsMobileMenuOpen(false)}>
+              {t("navigation.student.eqcm")}
+            </NavLink>
             <div className="mobile-nav-drawer__item disabled">
               <span>{t("navigation.student.progress")}</span>
               <span className="nav-badge nav-badge--coming">{t("common.comingSoon")}</span>

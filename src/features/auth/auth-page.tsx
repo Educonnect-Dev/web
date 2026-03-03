@@ -13,7 +13,6 @@ type Role = "student" | "teacher";
 export type AuthResponse = {
   user: { id: string; email: string; role: Role };
   accessToken?: string;
-  refreshToken?: string;
   verificationRequired?: boolean;
 };
 

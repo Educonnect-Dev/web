@@ -24,6 +24,7 @@ import { StudentCalendarPage } from "./features/sessions/student-calendar-page";
 import { StudentSessionsPage } from "./features/sessions/student-sessions-page";
 import { StudentProfilePage } from "./features/dashboard/pages/student-profile-page";
 import { AdminSubscriberModerationPage } from "./features/admin/admin-subscriber-moderation-page";
+import { StudentEqcmPage } from "./features/eqcm/student-eqcm-page";
 import { restoreSession } from "./services/auth-persistence";
 import { useSeoMeta } from "./shared/hooks/use-seo-meta";
 
@@ -102,6 +103,7 @@ function App() {
       <Route path="/public-profiles/:id" element={<PublicProfilePage />} />
       <Route path="/dashboard/student" element={<StudentDashboardPage />} />
       <Route path="/dashboard/student/profile" element={<StudentProfilePage />} />
+      <Route path="/dashboard/student/eqcm" element={<StudentEqcmPage />} />
       <Route path="/dashboard/student/progress" element={<ComingSoonPage />} />
       <Route path="/dashboard/teacher" element={<TeacherDashboardLayout />}>
         <Route index element={<TeacherDashboardOverview />} />

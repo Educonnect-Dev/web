@@ -91,7 +91,7 @@ async function refreshAccessToken(): Promise<boolean> {
     body: JSON.stringify({}),
   });
   if (!response.ok) return false;
-  const json = (await response.json()) as ApiResponse<{ accessToken: string; refreshToken: string }>;
+  const json = (await response.json()) as ApiResponse<{ accessToken: string }>;
   if (!json.data?.accessToken) return false;
 
   try {

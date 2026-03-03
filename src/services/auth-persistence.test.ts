@@ -27,7 +27,7 @@ describe("restoreSession", () => {
       "fetch",
       vi.fn(async () => ({
         ok: true,
-        json: async () => ({ data: { accessToken: "new-token", refreshToken: "r" }, error: null, meta: {} }),
+        json: async () => ({ data: { accessToken: "new-token" }, error: null, meta: {} }),
       })) as any,
     );
 

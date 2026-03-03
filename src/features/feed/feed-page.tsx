@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { apiGet } from "../../services/api-client";
+import { apiGet, apiPost } from "../../services/api-client";
 import { formatTeacherDisplayName } from "../../utils/teacher-display";
 import { StudentDashboardLayout } from "../dashboard/student-dashboard-layout";
 
@@ -19,6 +19,17 @@ type FeedItem = {
   annee?: string;
   isPaid: boolean;
   fileUrl?: string;
+  createdAt: string;
+};
+
+type FeedComment = {
+  id: string;
+  contentId: string;
+  isPaid: boolean;
+  authorId: string;
+  authorRole: "student" | "teacher";
+  authorName: string;
+  text: string;
   createdAt: string;
 };
 
@@ -48,23 +59,80 @@ export function FeedPage() {
     free: isAr ? "مجاني" : "Gratuit",
     level: isAr ? "المستوى" : "Niveau",
     year: isAr ? "السنة" : "Année",
+    comments: isAr ? "التعليقات" : "Commentaires",
+    commentPlaceholder: isAr ? "اكتب تعليقك..." : "Écris un commentaire...",
+    publishComment: isAr ? "نشر" : "Publier",
+    noComments: isAr ? "لا توجد تعليقات بعد" : "Aucun commentaire pour le moment",
   };
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [blockedTeacherIds, setBlockedTeacherIds] = useState<string[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [commentsByItem, setCommentsByItem] = useState<Record<string, FeedComment[]>>({});
+  const [commentInputByItem, setCommentInputByItem] = useState<Record<string, string>>({});
+  const [commentsLoadingByItem, setCommentsLoadingByItem] = useState<Record<string, boolean>>({});
+  const [commentsSubmittingByItem, setCommentsSubmittingByItem] = useState<Record<string, boolean>>({});
+  const [commentsOpenByItem, setCommentsOpenByItem] = useState<Record<string, boolean>>({});
+  const [likedByItem, setLikedByItem] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const commentKey = (itemId: string, isPaid: boolean) => `${isPaid ? "paid" : "free"}:${itemId}`;
+
+  const loadComments = async (itemId: string, isPaid: boolean) => {
+    const key = commentKey(itemId, isPaid);
+    if (commentsLoadingByItem[key]) return;
+    setCommentsLoadingByItem((prev) => ({ ...prev, [key]: true }));
+    const response = await apiGet<FeedComment[]>(`/feed/${itemId}/comments?isPaid=${isPaid ? "true" : "false"}`);
+    if (response.data) {
+      setCommentsByItem((prev) => ({ ...prev, [key]: response.data ?? [] }));
+    }
+    setCommentsLoadingByItem((prev) => ({ ...prev, [key]: false }));
+  };
 
   const loadPage = async (page: number) => {
     setIsLoading(true);
     const response = await apiGet<FeedItem[]>(`/feed?page=${page}&limit=6`);
     if (response.data) {
-      setItems((prev) => [...prev, ...(response.data ?? [])]);
+      const nextItems = response.data ?? [];
+      setItems((prev) => [...prev, ...nextItems]);
       const meta = response.meta as FeedMeta;
       setNextPage(meta.nextPage ?? null);
     }
     setIsLoading(false);
+  };
+
+  const submitComment = async (item: FeedItem) => {
+    const key = commentKey(item.id, item.isPaid);
+    const input = (commentInputByItem[key] ?? "").trim();
+    if (!input || commentsSubmittingByItem[key]) return;
+    setCommentsSubmittingByItem((prev) => ({ ...prev, [key]: true }));
+    const response = await apiPost<FeedComment>(`/feed/${item.id}/comments`, {
+      text: input,
+      isPaid: item.isPaid,
+    });
+    if (response.data) {
+      setCommentsByItem((prev) => ({
+        ...prev,
+        [key]: [...(prev[key] ?? []), response.data as FeedComment],
+      }));
+      setCommentInputByItem((prev) => ({ ...prev, [key]: "" }));
+    }
+    setCommentsSubmittingByItem((prev) => ({ ...prev, [key]: false }));
+  };
+
+  const toggleComments = async (item: FeedItem) => {
+    const key = commentKey(item.id, item.isPaid);
+    const nextOpen = !commentsOpenByItem[key];
+    setCommentsOpenByItem((prev) => ({ ...prev, [key]: nextOpen }));
+    if (nextOpen && commentsByItem[key] === undefined) {
+      await loadComments(item.id, item.isPaid);
+    }
+  };
+
+  const toggleLike = (item: FeedItem) => {
+    const key = commentKey(item.id, item.isPaid);
+    setLikedByItem((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   useEffect(() => {
@@ -129,7 +197,7 @@ export function FeedPage() {
           <div className="feed-list">
             {visibleItems.length ? (
               visibleItems.map((item) => (
-                <article key={item.id} className="content-card feed-card">
+                <article key={`${item.isPaid ? "paid" : "free"}-${item.id}`} className="content-card feed-card">
                   <div className="feed-card__top">
                     <Link className="content-author content-author--link feed-card__author" to={`/public-profiles/${item.teacherId}`}>
                       <span className="content-author__avatar feed-card__author-avatar">
@@ -203,6 +271,66 @@ export function FeedPage() {
                         </a>
                       ) : null}
                     </div>
+                    <div className="feed-card__engagement">
+                      <button
+                        className={`feed-engage-btn ${likedByItem[commentKey(item.id, item.isPaid)] ? "is-liked" : ""}`}
+                        type="button"
+                        aria-label="Aimer"
+                        onClick={() => toggleLike(item)}
+                      >
+                        <span className="feed-engage-btn__icon" aria-hidden="true">♥</span>
+                        <span>J'aime</span>
+                      </button>
+                      <button
+                        className={`feed-engage-btn ${commentsOpenByItem[commentKey(item.id, item.isPaid)] ? "is-active" : ""}`}
+                        type="button"
+                        aria-label={feedCopy.comments}
+                        onClick={() => toggleComments(item)}
+                      >
+                        <span className="feed-engage-btn__icon" aria-hidden="true">💬</span>
+                        <span>{feedCopy.comments}</span>
+                      </button>
+                    </div>
+                    {commentsOpenByItem[commentKey(item.id, item.isPaid)] ? (
+                      <div className="feed-comments">
+                        <div className="feed-comments__list">
+                          {(commentsByItem[commentKey(item.id, item.isPaid)] ?? []).length ? (
+                            (commentsByItem[commentKey(item.id, item.isPaid)] ?? []).map((comment) => (
+                              <div key={comment.id} className="feed-comment">
+                                <strong>{comment.authorName}</strong>
+                                <span>{new Date(comment.createdAt).toLocaleString(dateLocale)}</span>
+                                <p>{comment.text}</p>
+                              </div>
+                            ))
+                          ) : commentsLoadingByItem[commentKey(item.id, item.isPaid)] ? (
+                            <div className="feed-comment feed-comment--empty">{t("studentPages.loading")}</div>
+                          ) : (
+                            <div className="feed-comment feed-comment--empty">{feedCopy.noComments}</div>
+                          )}
+                        </div>
+                        <div className="feed-comments__composer">
+                          <textarea
+                            value={commentInputByItem[commentKey(item.id, item.isPaid)] ?? ""}
+                            onChange={(event) =>
+                              setCommentInputByItem((prev) => ({
+                                ...prev,
+                                [commentKey(item.id, item.isPaid)]: event.target.value,
+                              }))
+                            }
+                            placeholder={feedCopy.commentPlaceholder}
+                            rows={2}
+                          />
+                          <button
+                            className="btn btn-ghost"
+                            type="button"
+                            disabled={commentsSubmittingByItem[commentKey(item.id, item.isPaid)]}
+                            onClick={() => submitComment(item)}
+                          >
+                            {feedCopy.publishComment}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               ))

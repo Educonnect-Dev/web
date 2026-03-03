@@ -37,6 +37,9 @@ type PublicProfile = {
     coverImageUrl?: string;
     accentColor?: string;
     avatarUrl?: string;
+    ratingAverage?: number;
+    ratingCount?: number;
+    myRating?: number;
   };
   contents: Array<{
     id: string;
@@ -82,6 +85,11 @@ const translations: Record<Language, Record<string, string>> = {
     contentsCount: "Contenus",
     offersCount: "Offres",
     bookingCta: "Réserver un créneau",
+    ratingTitle: "Note des élèves",
+    yourRating: "Votre note",
+    noRatingYet: "Pas encore de note",
+    ratingSuccess: "Votre note a été enregistrée.",
+    ratingError: "Impossible d'enregistrer la note.",
   },
   ar: {
     verified: "ملف موثّق",
@@ -114,6 +122,11 @@ const translations: Record<Language, Record<string, string>> = {
     contentsCount: "المحتويات",
     offersCount: "العروض",
     bookingCta: "احجز موعدا",
+    ratingTitle: "تقييم التلاميذ",
+    yourRating: "تقييمك",
+    noRatingYet: "لا يوجد تقييم بعد",
+    ratingSuccess: "تم حفظ تقييمك.",
+    ratingError: "تعذر حفظ التقييم.",
   },
 };
 
@@ -125,6 +138,8 @@ type TeacherProfileViewProps = {
   subscribeStatus?: "idle" | "success" | "error";
   unsubscribeStatus?: "idle" | "success" | "error";
   isSubscribed?: boolean;
+  onRate?: (rating: number) => void;
+  ratingStatus?: "idle" | "success" | "error";
 };
 
 export function TeacherProfileView({
@@ -135,6 +150,8 @@ export function TeacherProfileView({
   subscribeStatus = "idle",
   unsubscribeStatus = "idle",
   isSubscribed = false,
+  onRate,
+  ratingStatus = "idle",
 }: TeacherProfileViewProps) {
   const { language } = useLanguage();
   const copy = useMemo(() => translations[language], [language]);
@@ -164,6 +181,9 @@ export function TeacherProfileView({
       ? { label: "Telegram", url: `https://t.me/${data.profile.contactTelegram.replace(/^@/, "")}` }
       : null,
   ].filter(Boolean) as Array<{ label: string; url: string }>;
+  const ratingAverage = data.profile.ratingAverage ?? 0;
+  const ratingCount = data.profile.ratingCount ?? 0;
+  const roundedAverage = ratingAverage.toFixed(1);
 
   return (
     <div className="profile-view" dir={isRtl ? "rtl" : "ltr"} style={profileStyle}>
@@ -245,6 +265,38 @@ export function TeacherProfileView({
             <strong>{data.profile.experienceYears ?? 0}</strong>
             <span>{copy.experienceLabel}</span>
           </div>
+        </div>
+        <div className="profile-card profile-card--access profile-card--rating">
+          <h3>{copy.ratingTitle}</h3>
+          {ratingCount > 0 ? (
+            <p>
+              {roundedAverage} / 5 ({ratingCount})
+            </p>
+          ) : (
+            <p>{copy.noRatingYet}</p>
+          )}
+          {mode === "student" ? (
+            <div className="profile-rating">
+              <span>{copy.yourRating}:</span>
+              <div className="profile-rating__stars">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    className={`profile-rating__star${value <= (data.profile.myRating ?? 0) ? " is-active" : ""}`}
+                    type="button"
+                    onClick={() => onRate?.(value)}
+                    aria-label={`Noter ${value} sur 5`}
+                  >
+                    {value <= (data.profile.myRating ?? 0) ? "★" : "☆"}
+                  </button>
+                ))}
+              </div>
+              {ratingStatus === "success" ? <div className="profile-message">{copy.ratingSuccess}</div> : null}
+              {ratingStatus === "error" ? (
+                <div className="profile-message profile-message--error">{copy.ratingError}</div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         {data.profile.specialtyTags?.length ? (
           <div className="profile-specialties">
