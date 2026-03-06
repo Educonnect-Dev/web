@@ -107,8 +107,8 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 function buildApiUrl(path: string): string {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${API_BASE_URL}${normalizedPath}`;
+  const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+  return new URL(normalizedPath, `${API_BASE_URL}/`).toString();
 }
 
 function normalizeApiBaseUrl(raw: string | undefined): string {

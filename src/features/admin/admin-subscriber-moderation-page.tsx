@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiGet } from "../../services/api-client";
+import { clearAdminAuth, getStoredAdminAuth } from "./admin-auth-storage";
 
 type AdminSubscriberModerationItem = {
   id: string;
@@ -27,9 +29,10 @@ type AdminSubscriberModerationResponse = {
 };
 
 export function AdminSubscriberModerationPage() {
+  const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isAr = i18n.language === "ar";
-  const [adminToken, setAdminToken] = useState("");
+  const adminAuth = getStoredAdminAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AdminSubscriberModerationResponse | null>(null);
@@ -37,14 +40,14 @@ export function AdminSubscriberModerationPage() {
   const [filter, setFilter] = useState<"all" | "blocked" | "reported" | "both">("all");
 
   const load = async () => {
-    if (!adminToken.trim()) {
-      setError("Token admin requis.");
+    if (!adminAuth?.accessToken) {
+      navigate("/admin/login", { replace: true });
       return;
     }
     setLoading(true);
     setError(null);
     const response = await apiGet<AdminSubscriberModerationResponse>("/admin/subscriber-moderation", {
-      Authorization: `Bearer ${adminToken.trim()}`,
+      Authorization: `Bearer ${adminAuth.accessToken}`,
     });
     setLoading(false);
     if (response.error || !response.data) {
@@ -82,19 +85,30 @@ export function AdminSubscriberModerationPage() {
 
   return (
     <section className="dashboard-section">
-      <h1>Admin · Modération abonnés</h1>
+      <div className="dashboard-header">
+        <div>
+          <h1>Admin · Modération abonnés</h1>
+          <p>Signalements et blocages liés aux abonnements.</p>
+        </div>
+        <div className="dashboard-actions">
+          <Link className="btn btn-ghost" to="/admin/verification">
+            Vérification profs
+          </Link>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => {
+              clearAdminAuth();
+              navigate("/admin/login", { replace: true });
+            }}
+          >
+            Déconnexion admin
+          </button>
+        </div>
+      </div>
 
       <div className="dashboard-card" style={{ marginBottom: 16 }}>
         <div className="settings-grid">
-          <label>
-            <span>Token admin (JWT)</span>
-            <input
-              type="password"
-              value={adminToken}
-              onChange={(event) => setAdminToken(event.target.value)}
-              placeholder="Bearer token admin_access..."
-            />
-          </label>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <button className="btn btn-primary" type="button" onClick={load} disabled={loading}>
               {loading ? "Chargement..." : "Charger"}
